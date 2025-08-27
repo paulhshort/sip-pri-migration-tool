@@ -6,8 +6,6 @@ import {
   generateFileName,
   getOutputPath,
 } from '@/lib/csv'
-import { v4 as uuidv4 } from 'uuid'
-import { fileTokens } from '../generate/route'
 import { log } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
@@ -41,11 +39,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Generate filenames and paths
-    const token = uuidv4()
     const metaswitchFilename = generateFileName('metaswitch', testInput.binding)
     const netsapiensFilename = generateFileName('netsapiens', testInput.binding)
     const metaswitchPath = getOutputPath(metaswitchFilename)
     const netsapiensPath = getOutputPath(netsapiensFilename)
+    
+    log(`Generated test filenames: ${metaswitchFilename}, ${netsapiensFilename}`)
     
     // Expand ranges for NetSapiens CSV
     const expandedNumbers = expandRanges(testDidRanges)
@@ -57,26 +56,18 @@ export async function POST(request: NextRequest) {
       writeNetSapiensCsv(netsapiensPath, expandedNumbers, testInput.domain, testInput.trunk, testInput.account)
     ])
     
-    // Store file paths with token
-    fileTokens.set(token, {
-      metaswitch: metaswitchFilename,
-      netsapiens: netsapiensFilename
-    })
-    
-    // Clean up old tokens after 1 hour
-    setTimeout(() => fileTokens.delete(token), 3600000)
+    log(`Test files written successfully: ${metaswitchPath}, ${netsapiensPath}`)
     
     return NextResponse.json({
       message: "Test CSVs generated successfully",
-      token,
       summary: {
         pbxLines: 1,
         didRanges: testDidRanges.length,
         totalNumbers: expandedNumbers.length
       },
       files: {
-        metaswitch: `/api/download?id=${token}&type=metaswitch`,
-        netsapiens: `/api/download?id=${token}&type=netsapiens`
+        metaswitch: `/api/download?file=${encodeURIComponent(metaswitchFilename)}`,
+        netsapiens: `/api/download?file=${encodeURIComponent(netsapiensFilename)}`
       },
       testData: {
         didRanges: testDidRanges,

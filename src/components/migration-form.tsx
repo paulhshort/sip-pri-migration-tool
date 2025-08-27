@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,7 +11,8 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Toast } from '@/components/ui/toast'
 import { SipBindingCombobox } from '@/components/sip-binding-combobox'
-import { Download, Loader2, Database, FileText, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react'
+import { ProgressIndicator } from '@/components/progress-indicator'
+import { Download, Loader2, Database, FileText, CheckCircle2, ArrowRight, RefreshCw, Save, Trash, Keyboard } from 'lucide-react'
 
 const formSchema = z.object({
   binding: z.string().min(1, 'Binding name is required'),
@@ -39,6 +40,7 @@ type GenerateResponse = {
 
 export function MigrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
   const [result, setResult] = useState<GenerateResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showToast, setShowToast] = useState<{
@@ -46,22 +48,108 @@ export function MigrationForm() {
     message: string
     type: 'success' | 'error' | 'info'
   }>({ show: false, message: '', type: 'info' })
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    control
+    control,
+    watch,
+    setValue,
+    getValues
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      binding: '',
+      domain: '',
+      trunk: '',
+      account: '',
+      location: undefined
+    }
   })
+
+  // Watch form values for auto-save
+  const watchedValues = watch()
+
+  // Auto-save form values to localStorage
+  useEffect(() => {
+    const values = getValues()
+    if (Object.values(values).some(v => v && v.length > 0)) {
+      localStorage.setItem('sip-pri-form-data', JSON.stringify(values))
+      setLastSaved(new Date())
+    }
+  }, [watchedValues, getValues])
+
+  // Load saved form data on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('sip-pri-form-data')
+    if (saved) {
+      try {
+        const parsedData = JSON.parse(saved)
+        Object.keys(parsedData).forEach((key) => {
+          if (parsedData[key]) {
+            setValue(key as keyof FormData, parsedData[key])
+          }
+        })
+        setLastSaved(new Date(localStorage.getItem('sip-pri-form-saved-at') || Date.now()))
+      } catch (error) {
+        console.error('Failed to load saved form data:', error)
+      }
+    }
+  }, [setValue])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to submit
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (!isSubmitting && !result) {
+          handleSubmit(onSubmit)()
+        }
+      }
+      
+      // Ctrl/Cmd + R to reset form
+      if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+        event.preventDefault()
+        handleReset()
+      }
+
+      // Escape to close results
+      if (event.key === 'Escape' && result) {
+        event.preventDefault()
+        handleReset()
+      }
+
+      // Ctrl/Cmd + / to show shortcuts
+      if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+        event.preventDefault()
+        setShowKeyboardShortcuts(!showKeyboardShortcuts)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isSubmitting, result, showKeyboardShortcuts, handleSubmit])
+
+  // Clear form data
+  const clearFormData = () => {
+    localStorage.removeItem('sip-pri-form-data')
+    localStorage.removeItem('sip-pri-form-saved-at')
+    setLastSaved(null)
+    reset()
+    setShowToast({ show: true, message: 'Form cleared', type: 'info' })
+  }
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
+    setShowProgress(true)
     setError(null)
     setResult(null)
-    setShowToast({ show: true, message: 'Connecting to ShadowDB...', type: 'info' })
+    setShowToast({ show: true, message: 'Starting CSV generation...', type: 'info' })
 
     try {
       const response = await fetch('/api/generate', {
@@ -82,11 +170,33 @@ export function MigrationForm() {
 
       const result: GenerateResponse = await response.json()
       setResult(result)
+      
+      // Add to generation history
+      const historyRecord = {
+        binding: data.binding,
+        domain: data.domain,
+        trunk: data.trunk,
+        timestamp: new Date().toISOString(),
+        metaswitchFile: result.files.metaswitch.split('=')[1],
+        netsapiensFile: result.files.netsapiens.split('=')[1],
+        totalNumbers: result.summary.totalNumbers
+      }
+
+      // Add to history using global function
+      if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).addToGenerationHistory) {
+        ((window as unknown as Record<string, unknown>).addToGenerationHistory as (record: typeof historyRecord) => void)(historyRecord)
+      }
+      
       setShowToast({ 
         show: true, 
         message: `Successfully generated ${result.summary.totalNumbers} phone numbers!`, 
         type: 'success' 
       })
+      
+      // Clear saved form data after successful generation
+      localStorage.removeItem('sip-pri-form-data')
+      setLastSaved(null)
+      
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMsg)
@@ -95,6 +205,7 @@ export function MigrationForm() {
       }
     } finally {
       setIsSubmitting(false)
+      setShowProgress(false)
     }
   }
 
@@ -116,6 +227,44 @@ export function MigrationForm() {
       )}
       
       <div className="space-y-8">
+        
+        {/* Progress Indicator */}
+        <ProgressIndicator 
+          isVisible={showProgress} 
+          onComplete={() => setShowProgress(false)}
+        />
+
+        {/* Keyboard Shortcuts Help */}
+        {showKeyboardShortcuts && (
+          <Card className="border-[#52B4FA]/20 bg-[#52B4FA]/5">
+            <CardHeader>
+              <CardTitle className="text-[#52B4FA] flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Keyboard Shortcuts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Submit form:</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl + Enter</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Reset form:</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl + R</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Close results:</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Escape</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Toggle help:</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl + /</kbd>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {result ? (
           <div className="space-y-6">
@@ -205,13 +354,43 @@ export function MigrationForm() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Database className="h-6 w-6 text-[#52B4FA]" />
-                Migration Configuration
-              </CardTitle>
-              <CardDescription>
-                Enter the migration details to generate CSV files for Metaswitch and NetSapiens systems
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-3">
+                    <Database className="h-6 w-6 text-[#52B4FA]" />
+                    Migration Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Enter the migration details to generate CSV files for Metaswitch and NetSapiens systems
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  {lastSaved && (
+                    <div className="flex items-center gap-1 text-xs text-green-400">
+                      <Save className="h-3 w-3" />
+                      Auto-saved
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFormData}
+                    className="text-gray-400 hover:text-red-400"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}
+                    className="text-gray-400 hover:text-[#52B4FA]"
+                  >
+                    <Keyboard className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

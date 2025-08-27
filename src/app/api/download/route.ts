@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'node:fs'
-import path from 'node:path'
 import { getOutputPath } from '@/lib/csv'
 import { log, error as logError } from '@/lib/logger'
 
