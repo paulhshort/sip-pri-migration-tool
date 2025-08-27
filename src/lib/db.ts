@@ -69,59 +69,35 @@ export async function getDidRangesForDns(dns: string[]): Promise<DidRange[]> {
   
   log(`Querying DID ranges for ${dns.length} directory numbers`)
   
-  // First try exact match (original logic)
-  const exactQuery = `
-    SELECT rangesize, firstdirectorynumber, lastdirectorynumber, firstcode, lastcode
-    FROM meta_pbx_directinwardcalling
-    WHERE firstdirectorynumber = ANY($1)
+  // Build query to find DID ranges where:
+  // 1. firstdirectorynumber exactly matches a PBX line
+  // 2. directorynumber field matches a PBX line (direct relationship)  
+  // 3. DID ranges that are ADJACENT to PBX lines (within ±1 of range boundaries)
+  const didRangesQuery = `
+    SELECT DISTINCT rangesize, firstdirectorynumber, lastdirectorynumber, firstcode, lastcode
+    FROM meta_pbx_directinwardcalling d
+    WHERE 
+      -- Direct match: PBX line matches the first number of a DID range
+      firstdirectorynumber = ANY($1)
+      -- Direct relationship: DID range's directorynumber field matches a PBX line
+      OR directorynumber = ANY($1)
+      OR EXISTS (
+        -- Adjacent match: PBX line is within ±1 of a DID range boundary
+        SELECT 1 FROM unnest($1::text[]) AS pbx(num)
+        WHERE 
+          -- PBX line is immediately before range start
+          CAST(pbx.num AS BIGINT) = CAST(d.firstdirectorynumber AS BIGINT) - 1
+          -- PBX line is immediately after range end
+          OR CAST(pbx.num AS BIGINT) = CAST(COALESCE(d.lastdirectorynumber, d.firstdirectorynumber) AS BIGINT) + 1
+      )
+    ORDER BY firstdirectorynumber
   `
   
   try {
-    const { rows: exactRows } = await pool.query(exactQuery, [dns])
-    log(`Found ${exactRows.length} exact DID range matches`)
+    const { rows } = await pool.query(didRangesQuery, [dns])
+    log(`Found ${rows.length} DID ranges (direct + adjacent matches)`)
     
-    if (exactRows.length > 0) {
-      // If we found exact matches, use them
-      const cleanRanges = exactRows.map(row => ({
-        rangesize: Number(row.rangesize) || 1,
-        firstdirectorynumber: (row.firstdirectorynumber as string)?.replace(/\D/g, '') || '',
-        lastdirectorynumber: (row.lastdirectorynumber as string)?.replace(/\D/g, '') || null,
-        firstcode: (row.firstcode as string)?.replace(/\D/g, '') || null,
-        lastcode: (row.lastcode as string)?.replace(/\D/g, '') || null,
-      })).filter(r => r.firstdirectorynumber.length > 0)
-      
-      log(`Filtered to ${cleanRanges.length} valid DID ranges from exact matches`)
-      return cleanRanges
-    }
-    
-    // If no exact matches, try pattern-based approach for related numbers
-    log('No exact matches found, trying pattern-based approach')
-    
-    // Use multiple pattern approaches to find related DID ranges
-    const baseNumber = dns[0] // Use first directory number as reference
-    log(`Base directory number: ${baseNumber}`)
-    
-    // Create multiple patterns to search for related numbers
-    const patterns = [
-      baseNumber.substring(0, 6) + '%',  // 734721% - exact 6-digit match
-      baseNumber.substring(0, 4) + '22%', // 734722% - same area, different exchange
-      baseNumber.substring(0, 4) + '28%', // 734728% - same area, different exchange
-    ]
-    
-    log(`Using targeted patterns: ${patterns.join(', ')}`)
-    
-    const patternQuery = `
-      SELECT rangesize, firstdirectorynumber, lastdirectorynumber, firstcode, lastcode
-      FROM meta_pbx_directinwardcalling
-      WHERE firstdirectorynumber LIKE $1 OR firstdirectorynumber LIKE $2 OR firstdirectorynumber LIKE $3
-      ORDER BY firstdirectorynumber
-    `
-    
-    const patternParams = patterns
-    const { rows: patternRows } = await pool.query(patternQuery, patternParams)
-    log(`Found ${patternRows.length} DID ranges using pattern matching`)
-    
-    const cleanRanges = patternRows.map(row => ({
+    const cleanRanges = rows.map(row => ({
       rangesize: Number(row.rangesize) || 1,
       firstdirectorynumber: (row.firstdirectorynumber as string)?.replace(/\D/g, '') || '',
       lastdirectorynumber: (row.lastdirectorynumber as string)?.replace(/\D/g, '') || null,
@@ -129,7 +105,7 @@ export async function getDidRangesForDns(dns: string[]): Promise<DidRange[]> {
       lastcode: (row.lastcode as string)?.replace(/\D/g, '') || null,
     })).filter(r => r.firstdirectorynumber.length > 0)
     
-    log(`Filtered to ${cleanRanges.length} valid DID ranges from pattern matching`)
+    log(`Filtered to ${cleanRanges.length} valid DID ranges`)
     return cleanRanges
   } catch (err) {
     logError('Failed to query DID ranges', err)
