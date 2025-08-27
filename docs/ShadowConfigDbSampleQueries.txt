@@ -1,0 +1,145 @@
+Sample Queries for the MetaView Shadow Configuration Database
+=============================================================
+
+Below are some sample SQL queries that can be sent to the Shadow Configuration
+Database, by using an SQL browser (for example pgAdmin available from
+http://www.pgadmin.org/) pointed at your MetaView Server.
+
+The database login details are as follows:
+
+Database: shadow_config_db
+User:     shadowconfigread
+<PASSWORD REDACTED>
+
+
+1: Subscribers with voicemail
+-----------------------------
+
+You are planning to make a change to the global operation or billing of the
+voicemail service and wish to produce a report listing all subscribers that are
+subscribed to voicemail, so that you are able see what the impact will be and
+manage it accordingly.
+
+SELECT BaseInformation_DirectoryNumber
+  FROM Meta_Subscriber
+  WHERE Voicemail_Subscribed = true;
+
+To count how many subscribers will be affected...
+
+SELECT count(*) FROM Meta_Subscriber
+  WHERE Voicemail_Subscribed = true;
+
+
+2: Subscribers with a certain Charge Number
+-------------------------------------------
+
+You are finding billing records being produced that you cannot correlate to a
+subscriber.  You suspect a misconfigured charge number on a subscriber object,
+and wish to search for that charge number (1234567890) across all subscribers.
+
+SELECT BaseInformation_DirectoryNumber
+  FROM Meta_Subscriber
+  WHERE BaseInformation_ChargeNumber = '1234567890';
+
+
+3: Find all references to a particular Directory Number
+-------------------------------------------------------
+
+You want to find all subscribers connected with a particular Directory Number.
+
+SELECT NetworkElementName, BaseInformation_DirectoryNumber,
+       BaseInformation_SubscriberType
+FROM Meta_Subscriber
+WHERE (BaseInformation_DirectoryNumber = '2012031234'
+    OR BaseInformation_ChargeNumber = '2012031234'
+    OR BaseInformation_CallingPartyNumber = '2012031234');
+
+And is that number used in a Business Group Number Block?
+
+SELECT NetworkElementName, BaseInformation_FirstDirectoryNumber,
+       BaseInformation_LastDirectoryNumber, BusinessGroupName
+FROM Meta_BGNumberBlock
+WHERE ((BaseInformation_FirstDirectoryNumber::bigint <= 2012031234)
+  AND (BaseInformation_LastDirectoryNumber::bigint >= 2012031234));
+
+
+4: Subscribers' Key Services
+----------------------------
+
+You want to audit some of the call service configuration on subscribers to
+ensure that the services they receive due to on-switch configuration match the
+services for which they are being charged subscription-based billing.  You wish
+to produce a report of what key services each subscriber has.
+
+SELECT BaseInformation_DirectoryNumber, FindMeFollowMe_Subscribed,
+       Voicemail_Subscribed, DoNotDisturb_Subscribed, ReminderCalls_Subscribed,
+       AutomaticCallback_Subscribed
+  FROM Meta_Subscriber;
+
+
+5: The device on a particular IP Address
+----------------------------------------
+
+You are seeing network problems that you have tracked down to traffic coming
+from a particular IP address.  You wish to search for all Subscriber Gateways
+and Configured SIP Bindings with that IP address (1.2.3.4) in their
+configuration.
+
+SELECT 'Configured SIP Binding ' || BaseInformation_Name AS match,
+       BaseInformation_ContactIPAddress AS ip_address
+  FROM  Meta_ConfiguredSIPBinding
+  WHERE (BaseInformation_ProxyIPAddress = '1.2.3.4'
+    OR BaseInformation_ContactIPAddress = '1.2.3.4')
+UNION
+SELECT 'Subscriber Gateway ' || BaseInformation_Description AS match,
+       BaseInformation_IPAddress AS ip_address
+  FROM  Meta_SubG
+  WHERE BaseInformation_IPAddress LIKE '1.2.3.4';
+
+
+6: Subscriber Gateways with a certain Media Gateway Model
+---------------------------------------------------------
+
+You are informed of a security issue affecting a particular make of VoIP device
+(ACME MG).  You wish to produce a report of all Subscriber Gateways using that
+device's MG Model.
+
+SELECT * FROM Meta_SubG
+  WHERE BaseInformation_MediaGatewayModel = 'ACME MG';
+
+
+7: All Directory Numbers on a MetaSphere Call Feature Server
+------------------------------------------------------------
+
+You want a list of all subscriber DNs in use on a particular MetaSphere Call
+Feature Server (MetaSphereCFS).
+
+SELECT BaseInformation_DirectoryNumber FROM Meta_Subscriber
+  WHERE NetworkElementName = 'MetaSphereCFS';
+
+
+8: Subscribers with certain Long Distance Carriers
+--------------------------------------------------
+
+You want to sell your own long distance service to your on-switch subscribers,
+and know you can beat another long distance provider on price.  You wish to
+produce a report of all subscribers pre-subscribed to the other long distance
+service providers PICs (1111 or 2222) to help with a marketing campaign.
+
+SELECT * FROM Meta_Subscriber
+  WHERE BaseInformation_LongDistanceCarrier IN ('1111', '2222');
+
+
+9: Subscribers with certain Line Class Codes or in certain Subscriber Groups
+----------------------------------------------------------------------------
+
+You want a list of all subscribers on your switch using particular line class
+codes (11111 or 22222) or referencing particular subscriber groups.  This could
+be used for tracking how many subscibers you have configured in each rate center
+for example.
+
+SELECT BaseInformation_DirectoryNumber
+  FROM Meta_Subscriber
+  WHERE BaseInformation_SubscriberGroup = 'AcmeSubGroup, NJ'
+     OR LineClassCodes_LineClassCode1 IN ('1111', '2222');
+

@@ -39,3 +39,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SIP/PRI Migration Tool specific
+/data/output/
+.claude/
+.vscode/
+/tmp/
+
+# AI development documentation (not needed in production)
+AGENTS.md
+ai-coding-agents-developer-reference.md
+CustomAgentsPromptsandHooks-2025_Developer_Reference.md
+RESEARCH_NOTES_*.md
+SHADOW_DB_VALIDATION_REPORT.md
+SIPandPRIMigrationTool_InitialSpec.md
+psql_readonly_cheatsheet.md
+
+# Keep important project docs but exclude development notes
+# CLAUDE.md - project config (keep)
+# PRD_*.md - requirements (keep)
+# CSV_SPECS.md - specifications (keep)
+# STACK_DECISIONS.md - architecture (keep)
+# CODE_SNIPPETS.md - examples (keep)
+# SHADOW_DB_QUERY_NOTES.md - database info (keep)
