@@ -71,17 +71,30 @@ export function MigrationForm() {
     }
   })
 
-  // Watch form values for auto-save
-  const watchedValues = watch()
+  // Watch individual fields for auto-save (avoid object identity churn)
+  const bindingVal = watch('binding')
+  const domainVal = watch('domain')
+  const trunkVal = watch('trunk')
+  const accountVal = watch('account')
+  const locationVal = watch('location')
 
-  // Auto-save form values to localStorage
+  // Auto-save form values to localStorage when they actually change
   useEffect(() => {
-    const values = getValues()
-    if (Object.values(values).some(v => v && v.length > 0)) {
-      localStorage.setItem('sip-pri-form-data', JSON.stringify(values))
-      setLastSaved(new Date())
+    const values = {
+      binding: bindingVal || '',
+      domain: domainVal || '',
+      trunk: trunkVal || '',
+      account: accountVal || '',
+      location: locationVal,
     }
-  }, [watchedValues, getValues])
+    const hasAny = Object.values(values).some(v => (typeof v === 'string' ? v.length > 0 : Boolean(v)))
+    if (hasAny) {
+      localStorage.setItem('sip-pri-form-data', JSON.stringify(values))
+      const iso = new Date().toISOString()
+      localStorage.setItem('sip-pri-form-saved-at', iso)
+      setLastSaved(new Date(iso))
+    }
+  }, [bindingVal, domainVal, trunkVal, accountVal, locationVal])
 
   // Load saved form data on component mount
   useEffect(() => {
@@ -90,11 +103,12 @@ export function MigrationForm() {
       try {
         const parsedData = JSON.parse(saved)
         Object.keys(parsedData).forEach((key) => {
-          if (parsedData[key]) {
+          if (parsedData[key] !== undefined && parsedData[key] !== null) {
             setValue(key as keyof FormData, parsedData[key])
           }
         })
-        setLastSaved(new Date(localStorage.getItem('sip-pri-form-saved-at') || Date.now()))
+        const savedAt = localStorage.getItem('sip-pri-form-saved-at')
+        if (savedAt) setLastSaved(new Date(savedAt))
       } catch (error) {
         console.error('Failed to load saved form data:', error)
       }
