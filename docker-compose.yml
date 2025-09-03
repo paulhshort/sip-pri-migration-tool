@@ -7,15 +7,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      # Database configuration (from .env file)
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
+    env_file:
+      - .env
+      # You can still override/add env vars here if needed
+      # environment:
+      #   NODE_ENV: production
+      #   PORT: 3000
     volumes:
       # Persist CSV output files
       - ./data/output:/app/data/output

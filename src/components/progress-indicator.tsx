@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, CheckCircle2, Database, FileText } from 'lucide-react'
 
@@ -17,66 +17,80 @@ interface ProgressIndicatorProps {
   onComplete?: () => void
 }
 
+const INITIAL_STEPS: ProgressStep[] = [
+  {
+    id: 'connect',
+    label: 'Connecting to ShadowDB',
+    status: 'pending',
+    icon: Database,
+    description: 'Establishing database connection'
+  },
+  {
+    id: 'query',
+    label: 'Querying PBX Lines',
+    status: 'pending',
+    icon: Database,
+    description: 'Searching for directory numbers'
+  },
+  {
+    id: 'ranges',
+    label: 'Finding DID Ranges',
+    status: 'pending',
+    icon: Database,
+    description: 'Pattern matching for related ranges'
+  },
+  {
+    id: 'generate',
+    label: 'Generating CSV Files',
+    status: 'pending',
+    icon: FileText,
+    description: 'Creating Metaswitch and NetSapiens files'
+  }
+]
+
+
 export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorProps) {
-  const [steps, setSteps] = useState<ProgressStep[]>([
-    {
-      id: 'connect',
-      label: 'Connecting to ShadowDB',
-      status: 'pending',
-      icon: Database,
-      description: 'Establishing database connection'
-    },
-    {
-      id: 'query',
-      label: 'Querying PBX Lines',
-      status: 'pending',
-      icon: Database,
-      description: 'Searching for directory numbers'
-    },
-    {
-      id: 'ranges',
-      label: 'Finding DID Ranges',
-      status: 'pending',
-      icon: Database,
-      description: 'Pattern matching for related ranges'
-    },
-    {
-      id: 'generate',
-      label: 'Generating CSV Files',
-      status: 'pending',
-      icon: FileText,
-      description: 'Creating Metaswitch and NetSapiens files'
-    }
-  ])
-  
+  const [steps, setSteps] = useState<ProgressStep[]>(INITIAL_STEPS.map(s => ({ ...s })))
+
   const [currentStep, setCurrentStep] = useState(0)
-  const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
 
-  // Update elapsed time
+  // Update elapsed time while visible
   useEffect(() => {
     if (!isVisible) return
-    
+
+    const start = Date.now()
+    setElapsedTime(0)
+
     const interval = setInterval(() => {
-      setElapsedTime(Date.now() - startTime)
+      setElapsedTime(Date.now() - start)
     }, 100)
 
     return () => clearInterval(interval)
-  }, [isVisible, startTime])
+  }, [isVisible])
 
-  // Simulate progress steps
+  // Keep latest onComplete in a ref to avoid re-triggering effect
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
+
+  // Simulate progress steps when becoming visible
   useEffect(() => {
     if (!isVisible) {
       // Reset when not visible
-      setSteps(steps.map(step => ({ ...step, status: 'pending' })))
+      setSteps(INITIAL_STEPS.map(s => ({ ...s })))
       setCurrentStep(0)
+      setElapsedTime(0)
       return
     }
 
-    const progressSteps = async () => {
+    let cancelled = false
+
+    const run = async () => {
       const stepDurations = [1000, 1500, 2000, 1000] // Approximate durations
 
-      for (let i = 0; i < steps.length; i++) {
+      for (let i = 0; i < INITIAL_STEPS.length && !cancelled; i++) {
         // Mark current step as loading
         setSteps(prev => prev.map((step, index) => ({
           ...step,
@@ -87,6 +101,8 @@ export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorPr
         // Wait for step duration (this would be replaced with actual API calls)
         await new Promise(resolve => setTimeout(resolve, stepDurations[i]))
 
+        if (cancelled) return
+
         // Mark current step as completed
         setSteps(prev => prev.map((step, index) => ({
           ...step,
@@ -94,14 +110,18 @@ export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorPr
         })))
       }
 
-      // All steps completed
-      setTimeout(() => {
-        onComplete?.()
-      }, 500)
+      if (!cancelled) {
+        setTimeout(() => {
+          onCompleteRef.current?.()
+        }, 500)
+      }
     }
 
-    progressSteps()
-  }, [isVisible, onComplete])
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [isVisible])
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
@@ -114,7 +134,7 @@ export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorPr
 
   const getStepIcon = (step: ProgressStep) => {
     const IconComponent = step.icon
-    
+
     if (step.status === 'loading') {
       return <Loader2 className="h-4 w-4 animate-spin text-[#52B4FA]" />
     } else if (step.status === 'completed') {
@@ -136,7 +156,7 @@ export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorPr
               {formatTime(elapsedTime)}
             </div>
           </div>
-          
+
           <div className="space-y-3">
             {steps.map((step, index) => (
               <div
@@ -154,7 +174,7 @@ export function ProgressIndicator({ isVisible, onComplete }: ProgressIndicatorPr
                 </div>
                 <div className="flex-1">
                   <div className={`font-medium ${
-                    step.status === 'loading' ? 'text-[#52B4FA]' : 
+                    step.status === 'loading' ? 'text-[#52B4FA]' :
                     step.status === 'completed' ? 'text-green-400' : 'text-gray-400'
                   }`}>
                     {step.label}

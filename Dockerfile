@@ -34,6 +34,8 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# Copy healthcheck script into runtime image
+COPY --from=builder /app/healthcheck.js ./healthcheck.js
 
 # Create data directory for CSV outputs
 RUN mkdir -p data/output && chown nextjs:nodejs data/output

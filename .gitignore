@@ -45,6 +45,7 @@ next-env.d.ts
 .claude/
 .vscode/
 /tmp/
+/src-tauri/
 
 # AI development documentation (not needed in production)
 AGENTS.md
