@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createDomain, createDomainRequestSchema, listDomains } from '@/lib/netsapiens'
+import { countDomain, createDomain, createDomainRequestSchema, listDomains } from '@/lib/netsapiens'
 import { log, error as logError } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
     const limitParam = request.nextUrl.searchParams.get('limit')
     const cursor = request.nextUrl.searchParams.get('cursor') ?? undefined
+    const domainParam = request.nextUrl.searchParams.get('domain')
+
+    if (domainParam !== null) {
+      const domain = domainParam.trim()
+      if (!domain) {
+        return NextResponse.json({ error: 'domain must be provided' }, { status: 400 })
+      }
+
+      if (limitParam !== null || cursor) {
+        return NextResponse.json({ error: 'domain existence check cannot be combined with pagination params' }, { status: 400 })
+      }
+
+      log('NetSapiens domain existence check requested', { domain })
+      const total = await countDomain(domain)
+      return NextResponse.json({ domain, total, exists: total > 0 })
+    }
 
     let limit: number | undefined
     if (limitParam !== null) {

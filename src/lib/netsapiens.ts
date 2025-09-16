@@ -76,6 +76,46 @@ export const createConnectionRequestSchema = z.object({
   'connection-sip-transport-protocol': z.string().optional(),
 }).passthrough()
 
+const phoneNumberRecordSchema = z.object({
+  domain: z.string(),
+  phonenumber: z.string(),
+  'dial-rule-application': z.string().nullable().optional(),
+  'dial-rule-description': z.string().nullable().optional(),
+  'dial-rule-parameter': z.string().nullable().optional(),
+  'dial-rule-translation-destination-host': z.string().nullable().optional(),
+  'dial-rule-translation-destination-user': z.string().nullable().optional(),
+  'dial-rule-translation-source-name': z.string().nullable().optional(),
+  enabled: z.string().nullable().optional(),
+}).passthrough()
+
+const phoneNumbersResponseSchema = z.array(phoneNumberRecordSchema)
+
+export const createPhoneNumberRequestSchema = z.object({
+  enabled: z.string().optional(),
+  phonenumber: z.string().min(1),
+  'dial-rule-application': z.string().min(1),
+  'dial-rule-translation-destination-user': z.string().min(1),
+  'dial-rule-translation-destination-host': z.string().min(1),
+  'dial-rule-description': z.string().optional(),
+  'dial-rule-translation-source-name': z.string().optional(),
+  'dial-rule-parameter': z.string().optional(),
+}).passthrough()
+
+export const updatePhoneNumberRequestSchema = z.object({
+  enabled: z.string().optional(),
+  'dial-rule-application': z.string().min(1),
+  'dial-rule-translation-destination-user': z.string().min(1),
+  'dial-rule-translation-destination-host': z.string().min(1),
+  'dial-rule-description': z.string().optional(),
+  'dial-rule-translation-source-name': z.string().optional(),
+  'dial-rule-parameter': z.string().optional(),
+}).passthrough()
+
+const acceptedResponseSchema = z.object({
+  code: z.number(),
+  message: z.string(),
+}).passthrough()
+
 const maskSecret = (value: string | null | undefined) => {
   if (!value) {
     return value ?? ''
@@ -300,6 +340,27 @@ export type CreateDomainRequest = z.infer<typeof createDomainRequestSchema>
 
 export type CreateConnectionRequest = z.infer<typeof createConnectionRequestSchema>
 
+type PhoneNumberRecord = z.infer<typeof phoneNumberRecordSchema>
+
+export type NetsapiensPhoneNumber = {
+  domain: string
+  number: string
+  application?: string
+  description?: string
+  parameter?: string
+  translationDestinationHost?: string
+  translationDestinationUser?: string
+  translationSourceName?: string
+  enabled?: 'yes' | 'no'
+  raw: PhoneNumberRecord
+}
+
+export type CreatePhoneNumberRequest = z.infer<typeof createPhoneNumberRequestSchema>
+
+export type UpdatePhoneNumberRequest = z.infer<typeof updatePhoneNumberRequestSchema>
+
+export type NetsapiensAcceptedResponse = z.infer<typeof acceptedResponseSchema>
+
 const mapDomainRecord = (record: DomainRecord): NetsapiensDomain => ({
   domain: record.domain,
   reseller: emptyToUndefined(record.reseller ?? undefined),
@@ -327,6 +388,27 @@ const mapConnectionRecord = (record: ConnectionRecord): NetsapiensConnection => 
   raw: record,
 })
 
+const mapPhoneNumberRecord = (record: PhoneNumberRecord): NetsapiensPhoneNumber => {
+  const normalizedEnabled = record.enabled ? record.enabled.trim().toLowerCase() : undefined
+  let enabled: 'yes' | 'no' | undefined
+  if (normalizedEnabled === 'yes' || normalizedEnabled === 'no') {
+    enabled = normalizedEnabled
+  }
+
+  return {
+    domain: record.domain,
+    number: record.phonenumber,
+    application: emptyToUndefined(record['dial-rule-application'] ?? undefined),
+    description: emptyToUndefined(record['dial-rule-description'] ?? undefined),
+    parameter: emptyToUndefined(record['dial-rule-parameter'] ?? undefined),
+    translationDestinationHost: emptyToUndefined(record['dial-rule-translation-destination-host'] ?? undefined),
+    translationDestinationUser: emptyToUndefined(record['dial-rule-translation-destination-user'] ?? undefined),
+    translationSourceName: emptyToUndefined(record['dial-rule-translation-source-name'] ?? undefined),
+    enabled,
+    raw: record,
+  }
+}
+
 export async function listDomains(options: DomainListOptions = {}): Promise<NetsapiensDomain[]> {
   const searchParams = new URLSearchParams()
   if (options.limit) {
@@ -346,6 +428,10 @@ export async function countDomain(domain: string): Promise<number> {
   const params = new URLSearchParams({ domain })
   const data = await netsapiensRequest(`domains/count?${params.toString()}`, { method: 'GET' }, domainCountSchema)
   return data.total
+}
+
+export async function domainExists(domain: string): Promise<boolean> {
+  return (await countDomain(domain)) > 0
 }
 
 export async function createDomain(input: CreateDomainRequest): Promise<NetsapiensDomain> {
@@ -412,4 +498,46 @@ export async function createConnection(input: CreateConnectionRequest): Promise<
   log('Created NetSapiens connection', logPayload)
 
   return mapConnectionRecord(response)
+}
+
+export async function listPhoneNumbers(domain: string): Promise<NetsapiensPhoneNumber[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/phonenumbers`, { method: 'GET' }, phoneNumbersResponseSchema)
+  log('Fetched NetSapiens phone numbers', { domain, count: records.length })
+  return records.map(mapPhoneNumberRecord)
+}
+
+export async function createPhoneNumber(domain: string, input: CreatePhoneNumberRequest) {
+  const encodedDomain = encodeURIComponent(domain)
+  const payload = createPhoneNumberRequestSchema.parse(input)
+  const response = await netsapiensRequest(`phonenumbers?domain=${encodedDomain}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, acceptedResponseSchema)
+
+  log('Submitted NetSapiens phone number create', {
+    domain,
+    number: payload.phonenumber,
+    application: payload['dial-rule-application'],
+  })
+
+  return response
+}
+
+export async function updatePhoneNumber(domain: string, phonenumber: string, input: UpdatePhoneNumberRequest) {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedNumber = encodeURIComponent(phonenumber)
+  const payload = updatePhoneNumberRequestSchema.parse(input)
+  const response = await netsapiensRequest(`domains/${encodedDomain}/phonenumbers/${encodedNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  }, acceptedResponseSchema)
+
+  log('Submitted NetSapiens phone number update', {
+    domain,
+    number: phonenumber,
+    application: payload['dial-rule-application'],
+  })
+
+  return response
 }
