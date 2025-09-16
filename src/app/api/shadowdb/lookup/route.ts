@@ -4,12 +4,17 @@ import { getConfiguredSipBinding } from '@/lib/shadowdb'
 import { log, error as logError } from '@/lib/logger'
 
 const requestSchema = z.object({
-  binding: z.string().min(1, 'Binding is required'),
+  binding: z.string().trim().min(1, 'Binding is required'),
 })
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
     const input = requestSchema.parse(body)
 
     log('ShadowDB lookup requested', { binding: input.binding })

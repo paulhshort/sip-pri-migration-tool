@@ -8,3 +8,5 @@
 
 - 19:36 EDT: Extended NetSapiens client with phone number helpers and domain existence utility; added API routes for domain existence checks and phone number CRUD.
 - 19:36 EDT: Tests: `pnpm test -- tests/unit/netsapiens.test.ts`
+- 19:49 EDT: Added NetSapiens connections API wrapper/routes, improved JSON validation, and wired the UI to surface ShadowDB + NetSapiens insights (domain + numbers).
+- 19:49 EDT: Tests: `pnpm test -- tests/unit/netsapiens.test.ts`

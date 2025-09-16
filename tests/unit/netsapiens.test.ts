@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   listDomains,
   createDomain,
+  listConnections,
+  getConnection,
+  createConnection,
   listPhoneNumbers,
   createPhoneNumber,
   updatePhoneNumber,
@@ -217,5 +220,120 @@ describe('NetSapiens client', () => {
     })
 
     expect(result).toMatchObject({ code: 202 })
+  })
+
+  it('lists connections for a domain', async () => {
+    const payload = [
+      {
+        domain: 'demo.example',
+        'connection-orig-match-pattern': 'sip*@demo.example',
+        'connection-term-match-pattern': 'sip*@demo.example',
+        'connection-sip-registration-username': 'user123',
+        'connection-sip-registration-password': 'secret123',
+        'connection-translation-destination-host': 'demo.example',
+        'connection-translation-destination-user': 'demo.example.pri',
+      },
+    ]
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await listConnections('demo.example')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}domains/demo.example/connections`)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      domain: 'demo.example',
+      originationPattern: 'sip*@demo.example',
+      sipRegistrationUsername: 'user123',
+      sipRegistrationPassword: 'secret123',
+    })
+  })
+
+  it('retrieves a specific connection', async () => {
+    const payload = [
+      {
+        domain: 'demo.example',
+        'connection-orig-match-pattern': 'sip*@demo.example',
+        'connection-term-match-pattern': 'sip*@demo.example',
+        'connection-sip-registration-username': 'user123',
+        'connection-sip-registration-password': 'secret123',
+        'connection-translation-destination-host': 'demo.example',
+        'connection-translation-destination-user': 'demo.example.pri',
+      },
+    ]
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await getConnection('demo.example', 'sip*@demo.example')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}domains/demo.example/connections/sip*%40demo.example`)
+    expect(result).not.toBeNull()
+    expect(result).toMatchObject({
+      domain: 'demo.example',
+      originationPattern: 'sip*@demo.example',
+      sipRegistrationPassword: 'secret123',
+    })
+  })
+
+  it('creates a connection with synchronous flag by default', async () => {
+    const responsePayload = {
+      domain: 'demo.example',
+      'connection-orig-match-pattern': 'sip*@demo.example',
+      'connection-term-match-pattern': 'sip*@demo.example',
+      'connection-sip-registration-username': 'user123',
+      'connection-sip-registration-password': 'secret123',
+      'connection-translation-destination-host': 'demo.example',
+      'connection-translation-destination-user': 'demo.example.pri',
+    }
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(`${API_BASE}connections`)
+      expect(init?.method).toBe('POST')
+      const body = JSON.parse((init?.body as string) ?? '{}')
+      expect(body.synchronous).toBe('yes')
+      expect(body['connection-orig-match-pattern']).toBe('sip*@demo.example')
+      return new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await createConnection({
+      domain: 'demo.example',
+      'connection-orig-match-pattern': 'sip*@demo.example',
+      'connection-term-match-pattern': 'sip*@demo.example',
+      'connection-address': 'sip:user123@demo.example',
+      'connection-sip-registration-username': 'user123',
+      'connection-sip-registration-realm': 'demo.example',
+      'connection-translation-request-user': '[*]',
+      'connection-translation-request-host': 'demo.example',
+      'connection-translation-destination-user': '[*]',
+      'connection-translation-destination-host': 'demo.example',
+      'connection-translation-source-user': '[*]',
+      'connection-translation-source-host': 'demo.example',
+      'dial-policy': 'Permit All',
+      'dial-plan': 'demo.example',
+    })
+
+    expect(result.domain).toBe('demo.example')
+    expect(result.sipRegistrationUsername).toBe('user123')
   })
 })

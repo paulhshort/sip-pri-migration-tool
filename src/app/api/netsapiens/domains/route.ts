@@ -45,7 +45,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
     const payload = createDomainRequestSchema.parse(body)
 
     log('NetSapiens domain create requested', { domain: payload.domain, reseller: payload.reseller })

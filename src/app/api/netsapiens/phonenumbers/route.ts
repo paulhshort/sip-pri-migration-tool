@@ -11,17 +11,17 @@ import {
 import { log, error as logError } from '@/lib/logger'
 
 const getQuerySchema = z.object({
-  domain: z.string().min(1, 'domain is required'),
-  number: z.string().optional(),
+  domain: z.string().trim().min(1, 'domain is required'),
+  number: z.string().trim().optional(),
 })
 
 const createRequestSchema = createPhoneNumberRequestSchema.extend({
-  domain: z.string().min(1, 'domain is required'),
+  domain: z.string().trim().min(1, 'domain is required'),
 })
 
 const updateRequestSchema = updatePhoneNumberRequestSchema.extend({
-  domain: z.string().min(1, 'domain is required'),
-  phonenumber: z.string().min(1, 'phonenumber is required'),
+  domain: z.string().trim().min(1, 'domain is required'),
+  phonenumber: z.string().trim().min(1, 'phonenumber is required'),
 })
 
 export async function GET(request: NextRequest) {
@@ -52,7 +52,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
     const payload = createRequestSchema.parse(body)
 
     const { domain, ...requestPayload } = payload
@@ -77,7 +82,12 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
     const payload = updateRequestSchema.parse(body)
 
     const { domain, phonenumber, ...requestPayload } = payload

@@ -7,12 +7,12 @@ const JITTER_MS = 200
 
 const domainRecordSchema = z.object({
   domain: z.string(),
-  reseller: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  'dial-plan': z.string().nullable().optional(),
-  'dial-policy': z.string().nullable().optional(),
-  'domain-type': z.string().nullable().optional(),
-  'time-zone': z.string().nullable().optional(),
+  reseller: z.string().nullish(),
+  description: z.string().nullish(),
+  'dial-plan': z.string().nullish(),
+  'dial-policy': z.string().nullish(),
+  'domain-type': z.string().nullish(),
+  'time-zone': z.string().nullish(),
   'count-users-configured': z.union([z.string(), z.number()]).optional(),
 }).passthrough()
 
@@ -42,13 +42,13 @@ const connectionRecordSchema = z.object({
   domain: z.string(),
   'connection-orig-match-pattern': z.string(),
   'connection-term-match-pattern': z.string(),
-  description: z.string().nullable().optional(),
-  'connection-sip-registration-username': z.string().nullable().optional(),
-  'connection-sip-registration-password': z.string().nullable().optional(),
-  'connection-translation-destination-host': z.string().nullable().optional(),
-  'connection-translation-destination-user': z.string().nullable().optional(),
-  'connection-translation-source-host': z.string().nullable().optional(),
-  'connection-translation-source-user': z.string().nullable().optional(),
+  description: z.string().nullish(),
+  'connection-sip-registration-username': z.string().nullish(),
+  'connection-sip-registration-password': z.string().nullish(),
+  'connection-translation-destination-host': z.string().nullish(),
+  'connection-translation-destination-user': z.string().nullish(),
+  'connection-translation-source-host': z.string().nullish(),
+  'connection-translation-source-user': z.string().nullish(),
   registration: z.record(z.string(), z.unknown()).optional(),
 }).passthrough()
 
@@ -79,13 +79,13 @@ export const createConnectionRequestSchema = z.object({
 const phoneNumberRecordSchema = z.object({
   domain: z.string(),
   phonenumber: z.string(),
-  'dial-rule-application': z.string().nullable().optional(),
-  'dial-rule-description': z.string().nullable().optional(),
-  'dial-rule-parameter': z.string().nullable().optional(),
-  'dial-rule-translation-destination-host': z.string().nullable().optional(),
-  'dial-rule-translation-destination-user': z.string().nullable().optional(),
-  'dial-rule-translation-source-name': z.string().nullable().optional(),
-  enabled: z.string().nullable().optional(),
+  'dial-rule-application': z.string().nullish(),
+  'dial-rule-description': z.string().nullish(),
+  'dial-rule-parameter': z.string().nullish(),
+  'dial-rule-translation-destination-host': z.string().nullish(),
+  'dial-rule-translation-destination-user': z.string().nullish(),
+  'dial-rule-translation-source-name': z.string().nullish(),
+  enabled: z.string().nullish(),
 }).passthrough()
 
 const phoneNumbersResponseSchema = z.array(phoneNumberRecordSchema)
@@ -191,16 +191,7 @@ const parseResponseBody = async (response: Response): Promise<unknown> => {
     }
   }
 
-  const text = await response.text()
-  if (!text) {
-    return null
-  }
-
-  try {
-    return JSON.parse(text)
-  } catch {
-    return text
-  }
+  return response.text()
 }
 
 export class NetsapiensError extends Error {
@@ -208,12 +199,9 @@ export class NetsapiensError extends Error {
   body: unknown
 
   constructor(message: string, status: number, body: unknown, cause?: unknown) {
-    super(message)
+    super(message, cause ? { cause } : undefined)
     this.status = status
     this.body = body
-    if (cause) {
-      ;(this as { cause?: unknown }).cause = cause
-    }
   }
 }
 

@@ -41,6 +41,43 @@ type GenerateResponse = {
   }
 }
 
+type BindingInsight =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'not-found' }
+  | { status: 'error'; message: string }
+  | {
+      status: 'found'
+      details: {
+        contactIp?: string
+        proxyIp?: string
+        mediaIp?: string
+        additionalInboundIps: string[]
+        sipUsername?: string
+      }
+    }
+
+type DomainInsight =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'not-found' }
+  | { status: 'error'; message: string }
+  | { status: 'found'; total: number }
+
+type PhoneNumberSummary = {
+  number: string
+  application?: string
+  translationDestinationUser?: string
+  translationDestinationHost?: string
+  enabled?: 'yes' | 'no'
+}
+
+type PhoneNumberInsight =
+  | { status: 'idle'; numbers: PhoneNumberSummary[] }
+  | { status: 'loading'; numbers: PhoneNumberSummary[] }
+  | { status: 'error'; numbers: PhoneNumberSummary[]; message: string }
+  | { status: 'loaded'; numbers: PhoneNumberSummary[] }
+
 export function MigrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
@@ -53,6 +90,9 @@ export function MigrationForm() {
   }>({ show: false, message: '', type: 'info' })
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
+  const [bindingInsight, setBindingInsight] = useState<BindingInsight>({ status: 'idle' })
+  const [domainInsight, setDomainInsight] = useState<DomainInsight>({ status: 'idle' })
+  const [phoneNumberInsight, setPhoneNumberInsight] = useState<PhoneNumberInsight>({ status: 'idle', numbers: [] })
 
   const {
     register,
@@ -101,6 +141,177 @@ export function MigrationForm() {
       setLastSaved(new Date(iso))
     }
   }, [migrationTypeVal, bindingVal, domainVal, trunkVal, accountVal, locationVal])
+
+  // Lookup binding details from ShadowDB with a small debounce
+  useEffect(() => {
+    const binding = (bindingVal || '').trim()
+    if (!binding) {
+      setBindingInsight({ status: 'idle' })
+      return
+    }
+
+    let isCancelled = false
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(async () => {
+      setBindingInsight({ status: 'loading' })
+      try {
+        const response = await fetch('/api/shadowdb/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ binding }),
+          signal: controller.signal,
+        })
+
+        if (isCancelled) return
+
+        if (response.status === 404) {
+          setBindingInsight({ status: 'not-found' })
+          return
+        }
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          const message = (data as { error?: string }).error || 'Lookup failed'
+          setBindingInsight({ status: 'error', message })
+          return
+        }
+
+        const data = await response.json()
+        if (binding !== (bindingVal || '').trim()) {
+          return
+        }
+
+        setBindingInsight({
+          status: 'found',
+          details: {
+            contactIp: data.contactIp,
+            proxyIp: data.proxyIp,
+            mediaIp: data.mediaIp,
+            additionalInboundIps: Array.isArray(data.additionalInboundIps) ? data.additionalInboundIps : [],
+            sipUsername: data.sipUsername,
+          },
+        })
+      } catch (error) {
+        if (isCancelled || (error as Error).name === 'AbortError') return
+        setBindingInsight({ status: 'error', message: (error as Error).message })
+      }
+    }, 400)
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+      window.clearTimeout(timeoutId)
+    }
+  }, [bindingVal])
+
+  // Lookup NetSapiens domain existence (debounced)
+  useEffect(() => {
+    const domain = (domainVal || '').trim()
+    if (!domain) {
+      setDomainInsight({ status: 'idle' })
+      setPhoneNumberInsight({ status: 'idle', numbers: [] })
+      return
+    }
+
+    let isCancelled = false
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(async () => {
+      setDomainInsight({ status: 'loading' })
+      try {
+        const response = await fetch(`/api/netsapiens/domains?domain=${encodeURIComponent(domain)}`, {
+          signal: controller.signal,
+        })
+
+        if (isCancelled) return
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          const message = (data as { error?: string }).error || 'Domain lookup failed'
+          setDomainInsight({ status: 'error', message })
+          setPhoneNumberInsight({ status: 'idle', numbers: [] })
+          return
+        }
+
+        const data = await response.json()
+        if (domain !== (domainVal || '').trim()) {
+          return
+        }
+
+        if (data.exists) {
+          setDomainInsight({ status: 'found', total: data.total ?? 0 })
+        } else {
+          setDomainInsight({ status: 'not-found' })
+          setPhoneNumberInsight({ status: 'idle', numbers: [] })
+        }
+      } catch (error) {
+        if (isCancelled || (error as Error).name === 'AbortError') return
+        setDomainInsight({ status: 'error', message: (error as Error).message })
+        setPhoneNumberInsight({ status: 'idle', numbers: [] })
+      }
+    }, 400)
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+      window.clearTimeout(timeoutId)
+    }
+  }, [domainVal])
+
+  // Fetch phone numbers once domain lookup confirms existence
+  useEffect(() => {
+    const domain = (domainVal || '').trim()
+    if (domainInsight.status !== 'found' || !domain) {
+      return
+    }
+
+    let isCancelled = false
+    const controller = new AbortController()
+
+    const fetchNumbers = async () => {
+      setPhoneNumberInsight({ status: 'loading', numbers: [] })
+      try {
+        const response = await fetch(`/api/netsapiens/phonenumbers?domain=${encodeURIComponent(domain)}`, {
+          signal: controller.signal,
+        })
+
+        if (isCancelled) return
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          const message = (data as { error?: string }).error || 'Failed to fetch phone numbers'
+          setPhoneNumberInsight({ status: 'error', numbers: [], message })
+          return
+        }
+
+        const data = await response.json()
+        if (domain !== (domainVal || '').trim()) {
+          return
+        }
+
+        const numbers: PhoneNumberSummary[] = Array.isArray(data.phonenumbers)
+          ? data.phonenumbers.map((entry: PhoneNumberSummary) => ({
+              number: entry.number,
+              application: entry.application,
+              translationDestinationHost: entry.translationDestinationHost,
+              translationDestinationUser: entry.translationDestinationUser,
+              enabled: entry.enabled,
+            }))
+          : []
+
+        setPhoneNumberInsight({ status: 'loaded', numbers })
+      } catch (error) {
+        if (isCancelled || (error as Error).name === 'AbortError') return
+        setPhoneNumberInsight({ status: 'error', numbers: [], message: (error as Error).message })
+      }
+    }
+
+    fetchNumbers()
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+    }
+  }, [domainInsight, domainVal])
 
   // Load saved form data on component mount
   useEffect(() => {
@@ -454,6 +665,41 @@ export function MigrationForm() {
                     <p className="text-xs text-gray-400">
                       Search through all SIP bindings configured in Metaswitch ShadowDB
                     </p>
+                    {bindingInsight.status === 'loading' && (
+                      <p className="text-xs text-gray-400 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Looking up binding details...
+                      </p>
+                    )}
+                    {bindingInsight.status === 'not-found' && (
+                      <p className="text-xs text-yellow-400">Binding not found in ShadowDB. Double-check the name.</p>
+                    )}
+                    {bindingInsight.status === 'error' && (
+                      <p className="text-xs text-red-400">ShadowDB lookup failed: {bindingInsight.message}</p>
+                    )}
+                    {bindingInsight.status === 'found' && (
+                      <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-3 text-xs text-gray-200 space-y-1">
+                        {bindingInsight.details.contactIp && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Contact IP</span>
+                            <span>{bindingInsight.details.contactIp}</span>
+                          </div>
+                        )}
+                        {bindingInsight.details.sipUsername && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">SIP Username</span>
+                            <span>{bindingInsight.details.sipUsername}</span>
+                          </div>
+                        )}
+                        {bindingInsight.details.additionalInboundIps.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Additional IPs</span>
+                            <span className="text-right max-w-[12rem] truncate" title={bindingInsight.details.additionalInboundIps.join(', ')}>
+                              {bindingInsight.details.additionalInboundIps.join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {errors.binding && (
                       <p className="text-sm text-red-400 flex items-center gap-1">
                         <span className="w-1 h-1 bg-red-400 rounded-full"></span>
@@ -475,6 +721,24 @@ export function MigrationForm() {
                     <p className="text-xs text-gray-400">
                       The target domain for NetSapiens routing
                     </p>
+                    {domainInsight.status === 'loading' && (
+                      <p className="text-xs text-gray-400 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Checking domain in NetSapiens...
+                      </p>
+                    )}
+                    {domainInsight.status === 'found' && (
+                      <p className="text-xs text-green-400">
+                        Domain already exists in NetSapiens ({domainInsight.total} record{domainInsight.total === 1 ? '' : 's'}).
+                      </p>
+                    )}
+                    {domainInsight.status === 'not-found' && (
+                      <p className="text-xs text-yellow-400">
+                        Domain not found. It will need to be created before provisioning.
+                      </p>
+                    )}
+                    {domainInsight.status === 'error' && (
+                      <p className="text-xs text-red-400">Domain lookup failed: {domainInsight.message}</p>
+                    )}
                     {errors.domain && (
                       <p className="text-sm text-red-400 flex items-center gap-1">
                         <span className="w-1 h-1 bg-red-400 rounded-full"></span>
@@ -547,6 +811,45 @@ export function MigrationForm() {
                     </p>
                   )}
                 </div>
+
+                {domainInsight.status === 'found' && (
+                  <div className="space-y-2">
+                    <Label>Existing Phone Numbers</Label>
+                    <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-3">
+                      {phoneNumberInsight.status === 'loading' && (
+                        <p className="text-xs text-gray-400 flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Fetching phone numbers...
+                        </p>
+                      )}
+                      {phoneNumberInsight.status === 'error' && (
+                        <p className="text-xs text-red-400">Failed to load numbers: {phoneNumberInsight.message}</p>
+                      )}
+                      {phoneNumberInsight.status === 'loaded' && (
+                        <div className="space-y-2">
+                          {phoneNumberInsight.numbers.length === 0 ? (
+                            <p className="text-xs text-gray-400">No numbers currently assigned to this domain.</p>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-400">
+                                Showing up to 10 numbers already present in NetSapiens.
+                              </p>
+                              <ul className="space-y-1 text-xs text-gray-200 max-h-40 overflow-y-auto">
+                                {phoneNumberInsight.numbers.slice(0, 10).map((entry) => (
+                                  <li key={entry.number} className="flex justify-between gap-2 border-b border-white/5 pb-1 last:border-none last:pb-0">
+                                    <span className="font-mono text-sm">{entry.number}</span>
+                                    <span className="text-gray-400">
+                                      {entry.application === 'to-user' ? `FXS ${entry.translationDestinationUser}` : entry.application === 'to-connection' ? 'Trunk' : 'Unassigned'}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {error && (
                   <Card className="border-red-500/50 bg-red-500/10">
