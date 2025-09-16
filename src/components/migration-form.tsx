@@ -15,6 +15,9 @@ import { ProgressIndicator } from '@/components/progress-indicator'
 import { Download, Loader2, Database, FileText, CheckCircle2, ArrowRight, RefreshCw, Save, Trash, Keyboard } from 'lucide-react'
 
 const formSchema = z.object({
+  migrationType: z.enum(['sip-trunk', 'pri'], {
+    message: 'Please select a migration type'
+  }),
   binding: z.string().min(1, 'Binding name is required'),
   domain: z.string().min(1, 'Domain is required'),
   trunk: z.string().min(1, 'SIP Trunk name is required'),
@@ -63,6 +66,7 @@ export function MigrationForm() {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      migrationType: 'sip-trunk',
       binding: '',
       domain: '',
       trunk: '',
@@ -72,6 +76,7 @@ export function MigrationForm() {
   })
 
   // Watch individual fields for auto-save (avoid object identity churn)
+  const migrationTypeVal = watch('migrationType')
   const bindingVal = watch('binding')
   const domainVal = watch('domain')
   const trunkVal = watch('trunk')
@@ -81,6 +86,7 @@ export function MigrationForm() {
   // Auto-save form values to localStorage when they actually change
   useEffect(() => {
     const values = {
+      migrationType: migrationTypeVal,
       binding: bindingVal || '',
       domain: domainVal || '',
       trunk: trunkVal || '',
@@ -94,7 +100,7 @@ export function MigrationForm() {
       localStorage.setItem('sip-pri-form-saved-at', iso)
       setLastSaved(new Date(iso))
     }
-  }, [bindingVal, domainVal, trunkVal, accountVal, locationVal])
+  }, [migrationTypeVal, bindingVal, domainVal, trunkVal, accountVal, locationVal])
 
   // Load saved form data on component mount
   useEffect(() => {
@@ -408,6 +414,26 @@ export function MigrationForm() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="migrationType">
+                    Migration Type
+                    <span className="text-[#52B4FA] ml-1">*</span>
+                  </Label>
+                  <Select id="migrationType" {...register('migrationType')}>
+                    <option value="sip-trunk">SIP Trunk</option>
+                    <option value="pri">PRI</option>
+                  </Select>
+                  <p className="text-xs text-gray-400">
+                    Choose SIP Trunk to run the existing CSV workflow or PRI to enable Adtran automation steps
+                  </p>
+                  {errors.migrationType && (
+                    <p className="text-sm text-red-400 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                      {errors.migrationType.message}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="binding">
