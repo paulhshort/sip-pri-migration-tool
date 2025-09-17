@@ -1,0 +1,891 @@
+import { z } from 'zod'
+import { log, warn, error as logError } from './logger'
+import { maskSecret } from './secrets'
+
+const MAX_RETRIES = 3
+const BASE_BACKOFF_MS = 1000
+const JITTER_MS = 200
+
+// Batch constraints
+const MAX_BATCH_SIZE = 10
+
+const domainRecordSchema = z.object({
+  domain: z.string(),
+  reseller: z.string().nullish(),
+  description: z.string().nullish(),
+  'dial-plan': z.string().nullish(),
+  'dial-policy': z.string().nullish(),
+  'domain-type': z.string().nullish(),
+  'time-zone': z.string().nullish(),
+  'count-users-configured': z.union([z.string(), z.number()]).optional(),
+}).passthrough()
+
+const domainsResponseSchema = z.array(domainRecordSchema)
+
+const domainCountSchema = z.object({
+  total: z.number(),
+})
+
+export const createDomainRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  domain: z.string().min(1),
+  reseller: z.string().min(1),
+  description: z.string().optional(),
+  'domain-type': z.string().optional(),
+  'dial-policy': z.string().optional(),
+  'dial-plan': z.string().optional(),
+  'caller-id-name': z.string().optional(),
+  'time-zone': z.string().optional(),
+  'language-token': z.string().optional(),
+  'is-domain-locked': z.enum(['yes', 'no']).optional(),
+  'is-stir-enabled': z.enum(['yes', 'no']).optional(),
+  'is-ivr-forward-change-blocked': z.enum(['yes', 'no']).optional(),
+}).passthrough()
+
+const connectionRecordSchema = z.object({
+  domain: z.string(),
+  'connection-orig-match-pattern': z.string(),
+  'connection-term-match-pattern': z.string(),
+  description: z.string().nullish(),
+  'connection-sip-registration-username': z.string().nullish(),
+  'connection-sip-registration-password': z.string().nullish(),
+  'connection-translation-destination-host': z.string().nullish(),
+  'connection-translation-destination-user': z.string().nullish(),
+  'connection-translation-source-host': z.string().nullish(),
+  'connection-translation-source-user': z.string().nullish(),
+  registration: z.record(z.string(), z.unknown()).optional(),
+}).passthrough()
+
+const connectionsResponseSchema = z.array(connectionRecordSchema)
+const connectionSingleOrArraySchema = z.union([connectionRecordSchema, connectionsResponseSchema])
+
+export const createConnectionRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  domain: z.string().min(1),
+  'connection-orig-match-pattern': z.string().min(1),
+  'connection-term-match-pattern': z.string().min(1),
+  'connection-address': z.string().min(1),
+  'connection-sip-registration-username': z.string().min(1),
+  'connection-sip-registration-realm': z.string().min(1),
+  'connection-translation-request-user': z.string().min(1),
+  'connection-translation-request-host': z.string().min(1),
+  'connection-translation-destination-user': z.string().min(1),
+  'connection-translation-destination-host': z.string().min(1),
+  'connection-translation-source-user': z.string().min(1),
+  'connection-translation-source-host': z.string().min(1),
+  'dial-policy': z.string().min(1),
+  'dial-plan': z.string().min(1),
+  description: z.string().optional(),
+  'connection-orig-enabled': z.enum(['yes', 'no']).optional(),
+  'connection-term-enabled': z.enum(['yes', 'no']).optional(),
+  'connection-sip-transport-protocol': z.string().optional(),
+}).passthrough()
+
+const userRecordSchema = z.object({
+  domain: z.string(),
+  user: z.string(),
+  'name-first-name': z.string().nullish(),
+  'name-last-name': z.string().nullish(),
+  'login-username': z.string().nullish(),
+  'user-scope': z.string().nullish(),
+  'dial-plan': z.string().nullish(),
+  'dial-policy': z.string().nullish(),
+  'time-zone': z.string().nullish(),
+}).passthrough()
+
+const usersResponseSchema = z.array(userRecordSchema)
+const userSingleOrArraySchema = z.union([userRecordSchema, usersResponseSchema])
+
+export const createUserRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  user: z.string().min(1),
+  'name-first-name': z.string().min(1),
+  'name-last-name': z.string().min(1),
+  'login-username': z.string().min(1),
+  'dial-plan': z.string().min(1),
+  'dial-policy': z.string().min(1),
+  'time-zone': z.string().min(1),
+  'user-scope': z.string().min(1),
+  'language-token': z.string().min(1),
+}).passthrough()
+
+const deviceRecordSchema = z.object({
+  domain: z.string(),
+  user: z.string(),
+  device: z.string(),
+  'device-sip-registration-username': z.string().nullish(),
+  'device-sip-registration-password': z.string().nullish(),
+  'device-sip-registration-uri': z.string().nullish(),
+}).passthrough()
+
+const devicesResponseSchema = z.array(deviceRecordSchema)
+const deviceSingleOrArraySchema = z.union([deviceRecordSchema, devicesResponseSchema])
+
+// Generic schema that accepts any/void, useful for DELETE 204s
+const unknownResponseSchema = z.unknown()
+
+let domainCountFallbackWarned = false
+
+export const createDeviceRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  device: z.string().min(1),
+  'auto-answer-enabled': z.string().optional(),
+  'device-provisioning-sip-transport-protocol': z.string().min(1),
+}).passthrough()
+
+const phoneNumberRecordSchema = z.object({
+  domain: z.string(),
+  phonenumber: z.string(),
+  'dial-rule-application': z.string().nullish(),
+  'dial-rule-description': z.string().nullish(),
+  'dial-rule-parameter': z.string().nullish(),
+  'dial-rule-translation-destination-host': z.string().nullish(),
+  'dial-rule-translation-destination-user': z.string().nullish(),
+  'dial-rule-translation-source-name': z.string().nullish(),
+  enabled: z.string().nullish(),
+}).passthrough()
+
+const phoneNumbersResponseSchema = z.array(phoneNumberRecordSchema)
+
+export const createPhoneNumberRequestSchema = z.object({
+  enabled: z.string().optional(),
+  phonenumber: z.string().min(1),
+  'dial-rule-application': z.string().min(1),
+  'dial-rule-translation-destination-user': z.string().min(1),
+  'dial-rule-translation-destination-host': z.string().min(1),
+  'dial-rule-description': z.string().optional(),
+  'dial-rule-translation-source-name': z.string().optional(),
+  'dial-rule-parameter': z.string().optional(),
+}).passthrough()
+
+export const updatePhoneNumberRequestSchema = z.object({
+  enabled: z.string().optional(),
+  'dial-rule-application': z.string().min(1),
+  'dial-rule-translation-destination-user': z.string().min(1),
+  'dial-rule-translation-destination-host': z.string().min(1),
+  'dial-rule-description': z.string().optional(),
+  'dial-rule-translation-source-name': z.string().optional(),
+  'dial-rule-parameter': z.string().optional(),
+}).passthrough()
+
+const acceptedResponseSchema = z.union([
+  z
+    .object({
+      code: z.number().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough(),
+  z.string(),
+])
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const toNumberOrUndefined = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return undefined
+    }
+
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  return undefined
+}
+
+const emptyToUndefined = (value: string | null | undefined): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+const buildUrl = (path: string, baseUrl: string): string => {
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+  return new URL(normalizedPath, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).toString()
+}
+
+const parseRetryAfter = (response: Response, attempt: number): number => {
+  const header = response.headers.get('retry-after')
+  if (header) {
+    const seconds = Number(header)
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return seconds * 1000
+    }
+
+    const retryDate = Date.parse(header)
+    if (!Number.isNaN(retryDate)) {
+      const diff = retryDate - Date.now()
+      if (diff > 0) {
+        return diff
+      }
+    }
+  }
+
+  return Math.min(2 ** (attempt - 1), 8) * BASE_BACKOFF_MS
+}
+
+const parseResponseBody = async (response: Response): Promise<unknown> => {
+  const contentType = response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json()
+    } catch (error) {
+      warn('Failed to parse JSON response from NetSapiens API', { message: (error as Error).message })
+      return null
+    }
+  }
+
+  return response.text()
+}
+
+export class NetsapiensError extends Error {
+  status: number
+  body: unknown
+
+  constructor(message: string, status: number, body: unknown, cause?: unknown) {
+    super(message, cause ? { cause } : undefined)
+    this.status = status
+    this.body = body
+  }
+}
+
+async function netsapiensRequest<T>(path: string, init: RequestInit, schema: z.ZodType<T>): Promise<T> {
+  const baseUrl = process.env.NS_API_BASE_URL
+  const apiKey = process.env.NS_API_KEY
+
+  if (!baseUrl) {
+    throw new Error('NS_API_BASE_URL is not configured')
+  }
+
+  if (!apiKey) {
+    throw new Error('NS_API_KEY is not configured')
+  }
+
+  const url = buildUrl(path, baseUrl)
+
+  const headers = new Headers(init.headers)
+  headers.set('Accept', 'application/json')
+  headers.set('Authorization', `Bearer ${apiKey}`)
+  if (init.body) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(url, { ...init, headers })
+
+      if (response.status === 429) {
+        const retryAfterMs = parseRetryAfter(response, attempt)
+        warn('NetSapiens API rate limited request, backing off', {
+          path,
+          attempt,
+          status: response.status,
+          retryAfterMs,
+        })
+
+        await response.text().catch(() => undefined)
+
+        if (attempt === MAX_RETRIES) {
+          throw new NetsapiensError('NetSapiens API rate limit exceeded', response.status, null)
+        }
+
+        await delay(retryAfterMs + Math.floor(Math.random() * JITTER_MS))
+        continue
+      }
+
+      if (!response.ok) {
+        const errorBody = await parseResponseBody(response)
+        logError('NetSapiens API responded with non-OK status', {
+          path,
+          status: response.status,
+          body: typeof errorBody === 'string' ? errorBody : undefined,
+        })
+        throw new NetsapiensError(`NetSapiens API request failed with status ${response.status}`, response.status, errorBody)
+      }
+
+      if (response.status === 204) {
+        return schema.parse(undefined)
+      }
+
+      const data = await parseResponseBody(response)
+      return schema.parse(data)
+    } catch (error) {
+      lastError = error
+
+      if (error instanceof NetsapiensError) {
+        throw error
+      }
+
+      if (attempt === MAX_RETRIES) {
+        logError('NetSapiens API request failed after maximum retries', { path, message: (error as Error).message })
+        throw new NetsapiensError('NetSapiens API request failed', 0, null, error)
+      }
+
+      const backoff = Math.min(2 ** (attempt - 1), 8) * BASE_BACKOFF_MS + Math.floor(Math.random() * JITTER_MS)
+      warn('Transient NetSapiens API error, retrying', { path, attempt, backoff, message: (error as Error).message })
+      await delay(backoff)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('NetSapiens API request failed')
+}
+
+type DomainRecord = z.infer<typeof domainRecordSchema>
+
+export type NetsapiensDomain = {
+  domain: string
+  reseller?: string
+  description?: string
+  dialPlan?: string
+  dialPolicy?: string
+  domainType?: string
+  timeZone?: string
+  countUsersConfigured?: number
+  raw: DomainRecord
+}
+
+type ConnectionRecord = z.infer<typeof connectionRecordSchema>
+
+export type NetsapiensConnection = {
+  domain: string
+  originationPattern: string
+  terminationPattern: string
+  description?: string
+  sipRegistrationUsername?: string
+  sipRegistrationPassword?: string
+  translationDestinationHost?: string
+  translationDestinationUser?: string
+  translationSourceHost?: string
+  translationSourceUser?: string
+  registration?: Record<string, unknown>
+  raw: ConnectionRecord
+}
+
+export type DomainListOptions = {
+  limit?: number
+  cursor?: string
+}
+
+export type CreateDomainRequest = z.infer<typeof createDomainRequestSchema>
+
+export type CreateConnectionRequest = z.infer<typeof createConnectionRequestSchema>
+
+type PhoneNumberRecord = z.infer<typeof phoneNumberRecordSchema>
+
+export type NetsapiensPhoneNumber = {
+  domain: string
+  number: string
+  application?: string
+  description?: string
+  parameter?: string
+  translationDestinationHost?: string
+  translationDestinationUser?: string
+  translationSourceName?: string
+  enabled?: 'yes' | 'no'
+  raw: PhoneNumberRecord
+}
+
+export type CreatePhoneNumberRequest = z.infer<typeof createPhoneNumberRequestSchema>
+
+export type UpdatePhoneNumberRequest = z.infer<typeof updatePhoneNumberRequestSchema>
+
+export type NetsapiensAcceptedResponse = {
+  code: number
+  message: string
+}
+
+type UserRecord = z.infer<typeof userRecordSchema>
+
+export type NetsapiensUser = {
+  domain: string
+  user: string
+  firstName?: string
+  lastName?: string
+  loginUsername?: string
+  scope?: string
+  dialPlan?: string
+  dialPolicy?: string
+  timeZone?: string
+  raw: UserRecord
+}
+
+export type CreateUserRequest = z.infer<typeof createUserRequestSchema>
+
+type DeviceRecord = z.infer<typeof deviceRecordSchema>
+
+export type NetsapiensDevice = {
+  domain: string
+  user: string
+  device: string
+  sipRegistrationUsername?: string
+  sipRegistrationPassword?: string
+  sipRegistrationUri?: string
+  raw: DeviceRecord
+}
+
+export type CreateDeviceRequest = z.infer<typeof createDeviceRequestSchema>
+
+// Batch types
+export type BatchItemSuccess<T> = { index: number; result: T }
+export type BatchItemSkipped<I> = { index: number; input: I; reason: 'exists' }
+export type BatchItemError<I> = { index: number; input: I; message: string; status?: number }
+export type BatchResult<T, I> = {
+  successes: BatchItemSuccess<T>[]
+  skipped: BatchItemSkipped<I>[]
+  errors: BatchItemError<I>[]
+}
+
+const mapDomainRecord = (record: DomainRecord): NetsapiensDomain => ({
+  domain: record.domain,
+  reseller: emptyToUndefined(record.reseller ?? undefined),
+  description: emptyToUndefined(record.description ?? undefined),
+  dialPlan: emptyToUndefined(record['dial-plan'] ?? undefined),
+  dialPolicy: emptyToUndefined(record['dial-policy'] ?? undefined),
+  domainType: emptyToUndefined(record['domain-type'] ?? undefined),
+  timeZone: emptyToUndefined(record['time-zone'] ?? undefined),
+  countUsersConfigured: toNumberOrUndefined(record['count-users-configured']),
+  raw: record,
+})
+
+const mapConnectionRecord = (record: ConnectionRecord): NetsapiensConnection => ({
+  domain: record.domain,
+  originationPattern: record['connection-orig-match-pattern'],
+  terminationPattern: record['connection-term-match-pattern'],
+  description: emptyToUndefined(record.description ?? undefined),
+  sipRegistrationUsername: emptyToUndefined(record['connection-sip-registration-username'] ?? undefined),
+  sipRegistrationPassword: emptyToUndefined(record['connection-sip-registration-password'] ?? undefined),
+  translationDestinationHost: emptyToUndefined(record['connection-translation-destination-host'] ?? undefined),
+  translationDestinationUser: emptyToUndefined(record['connection-translation-destination-user'] ?? undefined),
+  translationSourceHost: emptyToUndefined(record['connection-translation-source-host'] ?? undefined),
+  translationSourceUser: emptyToUndefined(record['connection-translation-source-user'] ?? undefined),
+  registration: record.registration ?? undefined,
+  raw: record,
+})
+
+const mapPhoneNumberRecord = (record: PhoneNumberRecord): NetsapiensPhoneNumber => {
+  const normalizedEnabled = record.enabled ? record.enabled.trim().toLowerCase() : undefined
+  let enabled: 'yes' | 'no' | undefined
+  if (normalizedEnabled === 'yes' || normalizedEnabled === 'no') {
+    enabled = normalizedEnabled
+  }
+
+  return {
+    domain: record.domain,
+    number: record.phonenumber,
+    application: emptyToUndefined(record['dial-rule-application'] ?? undefined),
+    description: emptyToUndefined(record['dial-rule-description'] ?? undefined),
+    parameter: emptyToUndefined(record['dial-rule-parameter'] ?? undefined),
+    translationDestinationHost: emptyToUndefined(record['dial-rule-translation-destination-host'] ?? undefined),
+    translationDestinationUser: emptyToUndefined(record['dial-rule-translation-destination-user'] ?? undefined),
+    translationSourceName: emptyToUndefined(record['dial-rule-translation-source-name'] ?? undefined),
+    enabled,
+    raw: record,
+  }
+}
+
+const mapUserRecord = (record: UserRecord): NetsapiensUser => ({
+  domain: record.domain,
+  user: record.user,
+  firstName: emptyToUndefined(record['name-first-name'] ?? undefined),
+  lastName: emptyToUndefined(record['name-last-name'] ?? undefined),
+  loginUsername: emptyToUndefined(record['login-username'] ?? undefined),
+  scope: emptyToUndefined(record['user-scope'] ?? undefined),
+  dialPlan: emptyToUndefined(record['dial-plan'] ?? undefined),
+  dialPolicy: emptyToUndefined(record['dial-policy'] ?? undefined),
+  timeZone: emptyToUndefined(record['time-zone'] ?? undefined),
+  raw: record,
+})
+
+const mapDeviceRecord = (record: DeviceRecord): NetsapiensDevice => ({
+  domain: record.domain,
+  user: record.user,
+  device: record.device,
+  sipRegistrationUsername: emptyToUndefined(record['device-sip-registration-username'] ?? undefined),
+  sipRegistrationPassword: emptyToUndefined(record['device-sip-registration-password'] ?? undefined),
+  sipRegistrationUri: emptyToUndefined(record['device-sip-registration-uri'] ?? undefined),
+  raw: record,
+})
+
+const normalizeAcceptedResponse = (value: unknown): NetsapiensAcceptedResponse => {
+  if (typeof value === 'string') {
+    return { code: 202, message: value || 'Accepted' }
+  }
+
+  const record = value as { code?: number; message?: string }
+  return {
+    code: record.code ?? 202,
+    message: record.message ?? 'Accepted',
+  }
+}
+
+export async function listDomains(options: DomainListOptions = {}): Promise<NetsapiensDomain[]> {
+  const searchParams = new URLSearchParams()
+  if (options.limit) {
+    searchParams.set('limit', String(options.limit))
+  }
+  if (options.cursor) {
+    searchParams.set('cursor', options.cursor)
+  }
+
+  const path = searchParams.toString() ? `domains?${searchParams.toString()}` : 'domains'
+  const records = await netsapiensRequest(path, { method: 'GET' }, domainsResponseSchema)
+  log('Fetched NetSapiens domains', { count: records.length })
+  return records.map(mapDomainRecord)
+}
+
+export async function countDomain(domain: string): Promise<number> {
+  const params = new URLSearchParams({ domain })
+  const data = await netsapiensRequest(`domains/count?${params.toString()}`, { method: 'GET' }, domainCountSchema)
+  return data.total
+}
+
+export async function domainExists(domain: string): Promise<boolean> {
+  try {
+    return (await countDomain(domain)) > 0
+  } catch (error) {
+    if (!domainCountFallbackWarned) {
+      domainCountFallbackWarned = true
+      warn('NetSapiens domain count endpoint unavailable; falling back to listDomains', {
+        message: (error as Error).message,
+      })
+    }
+
+    const domains = await listDomains({ limit: 1000 })
+    return domains.some((entry) => entry.domain.toLowerCase() === domain.toLowerCase())
+  }
+}
+
+export async function createDomain(input: CreateDomainRequest): Promise<NetsapiensDomain> {
+  const payload = createDomainRequestSchema.parse({ synchronous: 'yes', ...input })
+  const response = await netsapiensRequest('domains', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, domainRecordSchema)
+
+  log('Created NetSapiens domain', { domain: response.domain })
+
+  return mapDomainRecord(response)
+}
+
+export async function listConnections(domain: string): Promise<NetsapiensConnection[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/connections`, { method: 'GET' }, connectionsResponseSchema)
+  log('Fetched NetSapiens connections', { domain, count: records.length })
+  return records.map(mapConnectionRecord)
+}
+
+export async function getConnection(domain: string, matchPattern: string): Promise<NetsapiensConnection | null> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedPattern = encodeURIComponent(matchPattern)
+  const payload = await netsapiensRequest(
+    `domains/${encodedDomain}/connections/${encodedPattern}`,
+    { method: 'GET' },
+    connectionSingleOrArraySchema,
+  )
+
+  const records = Array.isArray(payload) ? payload : [payload]
+
+  if (!records.length) {
+    return null
+  }
+
+  const [record] = records
+  const logPayload: Record<string, unknown> = {
+    domain,
+    matchPattern,
+    hasPassword: Boolean(record['connection-sip-registration-password']),
+    usernamePresent: Boolean(record['connection-sip-registration-username']),
+  }
+
+  if (record['connection-sip-registration-password']) {
+    logPayload.maskedPassword = maskSecret(record['connection-sip-registration-password'])
+  }
+
+  log('Retrieved NetSapiens connection', logPayload)
+
+  return mapConnectionRecord(record)
+}
+
+export async function createConnection(input: CreateConnectionRequest): Promise<NetsapiensConnection> {
+  const payload = createConnectionRequestSchema.parse({ synchronous: 'yes', ...input })
+  const response = await netsapiensRequest('connections', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, connectionRecordSchema)
+
+  const logPayload: Record<string, unknown> = {
+    domain: response.domain,
+    matchPattern: response['connection-orig-match-pattern'],
+  }
+
+  if (response['connection-sip-registration-password']) {
+    logPayload.maskedPassword = maskSecret(response['connection-sip-registration-password'])
+  }
+
+  log('Created NetSapiens connection', logPayload)
+
+  return mapConnectionRecord(response)
+}
+
+export async function listPhoneNumbers(domain: string): Promise<NetsapiensPhoneNumber[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/phonenumbers`, { method: 'GET' }, phoneNumbersResponseSchema)
+  log('Fetched NetSapiens phone numbers', { domain, count: records.length })
+  return records.map(mapPhoneNumberRecord)
+}
+
+export async function createPhoneNumber(domain: string, input: CreatePhoneNumberRequest) {
+  const encodedDomain = encodeURIComponent(domain)
+  const payload = createPhoneNumberRequestSchema.parse(input)
+  const response = await netsapiensRequest(`phonenumbers?domain=${encodedDomain}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, acceptedResponseSchema)
+
+  log('Submitted NetSapiens phone number create', {
+    domain,
+    number: payload.phonenumber,
+    application: payload['dial-rule-application'],
+  })
+
+  return normalizeAcceptedResponse(response)
+}
+
+export async function updatePhoneNumber(domain: string, phonenumber: string, input: UpdatePhoneNumberRequest) {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedNumber = encodeURIComponent(phonenumber)
+  const payload = updatePhoneNumberRequestSchema.parse(input)
+  const response = await netsapiensRequest(`domains/${encodedDomain}/phonenumbers/${encodedNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  }, acceptedResponseSchema)
+
+  log('Submitted NetSapiens phone number update', {
+    domain,
+    number: phonenumber,
+    application: payload['dial-rule-application'],
+  })
+
+  return normalizeAcceptedResponse(response)
+}
+
+export async function listUsers(domain: string): Promise<NetsapiensUser[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/users`, { method: 'GET' }, usersResponseSchema)
+  log('Fetched NetSapiens users', { domain, count: records.length })
+  return records.map(mapUserRecord)
+}
+
+export async function getUser(domain: string, user: string): Promise<NetsapiensUser | null> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const payload = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}`, { method: 'GET' }, userSingleOrArraySchema)
+
+  const records = Array.isArray(payload) ? payload : [payload]
+
+  if (!records.length) {
+    return null
+  }
+
+  log('Retrieved NetSapiens user', { domain, user })
+  return mapUserRecord(records[0])
+}
+
+export async function createUser(domain: string, input: CreateUserRequest): Promise<NetsapiensUser> {
+  const encodedDomain = encodeURIComponent(domain)
+  const payload = createUserRequestSchema.parse({ synchronous: 'yes', ...input })
+  const response = await netsapiensRequest(`domains/${encodedDomain}/users`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, userRecordSchema)
+
+  log('Created NetSapiens user', { domain, user: response.user })
+  return mapUserRecord(response)
+}
+
+export async function listDevices(domain: string, user: string): Promise<NetsapiensDevice[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}/devices`, { method: 'GET' }, devicesResponseSchema)
+  log('Fetched NetSapiens devices', { domain, user, count: records.length })
+  return records.map(mapDeviceRecord)
+}
+
+export async function createDevice(domain: string, user: string, input: CreateDeviceRequest): Promise<NetsapiensDevice> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const payload = createDeviceRequestSchema.parse({ synchronous: 'yes', ...input })
+  const rawResponse = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}/devices`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, deviceSingleOrArraySchema)
+
+  const response = Array.isArray(rawResponse) ? rawResponse[0] : rawResponse
+
+  log('Created NetSapiens device', {
+    domain,
+    user,
+    device: response.device,
+  })
+
+  return mapDeviceRecord(response)
+}
+
+// Idempotency helpers
+export async function checkUserExists(domain: string, user: string): Promise<boolean> {
+  try {
+    const found = await getUser(domain, user)
+    return Boolean(found)
+  } catch (e) {
+    // Propagate NetsapiensError 429/5xx for retry logic upstream
+    throw e
+  }
+}
+
+export async function checkDeviceExists(domain: string, user: string, device: string): Promise<boolean> {
+  try {
+    const devices = await listDevices(domain, user)
+    return devices.some((d) => d.device.toLowerCase() === device.toLowerCase())
+  } catch (e) {
+    throw e
+  }
+}
+
+// Batch operations
+export async function batchCreateUsers(
+  domain: string,
+  users: CreateUserRequest[],
+): Promise<BatchResult<NetsapiensUser, CreateUserRequest>> {
+  if (users.length === 0) {
+    return { successes: [], skipped: [], errors: [] }
+  }
+  if (users.length > MAX_BATCH_SIZE) {
+    throw new Error(`batchCreateUsers limit exceeded: ${users.length} > ${MAX_BATCH_SIZE}`)
+  }
+
+  const result: BatchResult<NetsapiensUser, CreateUserRequest> = { successes: [], skipped: [], errors: [] }
+
+  for (let i = 0; i < users.length; i += 1) {
+    const input = users[i]
+    try {
+      const exists = await checkUserExists(domain, input.user)
+      if (exists) {
+        result.skipped.push({ index: i, input, reason: 'exists' })
+        continue
+      }
+
+      const created = await createUser(domain, input)
+      result.successes.push({ index: i, result: created })
+    } catch (e) {
+      const err = e as unknown
+      const status = err instanceof NetsapiensError ? err.status : undefined
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      result.errors.push({ index: i, input, message, status })
+      // continue processing remaining items (partial failure handling)
+    }
+  }
+
+  // Mask secrets in logs if present (login-username is not secret; none to mask here)
+  log('Batch create users complete', {
+    domain,
+    total: users.length,
+    successes: result.successes.length,
+    skipped: result.skipped.length,
+    errors: result.errors.length,
+  })
+
+  return result
+}
+
+export async function batchCreateDevices(
+  domain: string,
+  user: string,
+  devices: CreateDeviceRequest[],
+): Promise<BatchResult<NetsapiensDevice, CreateDeviceRequest>> {
+  if (devices.length === 0) {
+    return { successes: [], skipped: [], errors: [] }
+  }
+  if (devices.length > MAX_BATCH_SIZE) {
+    throw new Error(`batchCreateDevices limit exceeded: ${devices.length} > ${MAX_BATCH_SIZE}`)
+  }
+
+  const result: BatchResult<NetsapiensDevice, CreateDeviceRequest> = { successes: [], skipped: [], errors: [] }
+  const createdDevices: { index: number; device: NetsapiensDevice }[] = []
+
+  for (let i = 0; i < devices.length; i += 1) {
+    const input = devices[i]
+    try {
+      const exists = await checkDeviceExists(domain, user, input.device)
+      if (exists) {
+        result.skipped.push({ index: i, input, reason: 'exists' })
+        continue
+      }
+
+      const created = await createDevice(domain, user, input)
+      createdDevices.push({ index: i, device: created })
+      result.successes.push({ index: i, result: created })
+    } catch (e) {
+      const err = e as unknown
+      const status = err instanceof NetsapiensError ? err.status : undefined
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      result.errors.push({ index: i, input, message, status })
+
+      // Rollback previously created devices for this batch
+      if (createdDevices.length > 0) {
+        warn('Rolling back created devices after batch error', {
+          domain,
+          user,
+          createdCount: createdDevices.length,
+        })
+
+        for (const c of createdDevices) {
+          try {
+            const encodedDomain = encodeURIComponent(domain)
+            const encodedUser = encodeURIComponent(user)
+            const encodedDevice = encodeURIComponent(c.device.device)
+            await netsapiensRequest(
+              `domains/${encodedDomain}/users/${encodedUser}/devices/${encodedDevice}`,
+              { method: 'DELETE' },
+              unknownResponseSchema,
+            )
+            log('Rolled back NetSapiens device', { domain, user, device: c.device.device })
+          } catch (rollbackErr) {
+            const rbStatus = rollbackErr instanceof NetsapiensError ? rollbackErr.status : undefined
+            logError('Failed to rollback NetSapiens device', {
+              domain,
+              user,
+              device: c.device.device,
+              status: rbStatus,
+              message: (rollbackErr as Error).message,
+            })
+          }
+        }
+      }
+
+      // After rollback attempt, break out to avoid partial persistent state in same batch
+      break
+    }
+  }
+
+  log('Batch create devices complete', {
+    domain,
+    user,
+    total: devices.length,
+    successes: result.successes.length,
+    skipped: result.skipped.length,
+    errors: result.errors.length,
+  })
+
+  return result
+}

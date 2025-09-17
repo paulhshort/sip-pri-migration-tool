@@ -1,0 +1,4 @@
+ADTRAN, Inc. OS Version: R13.12.0.E
+Compiled on Thu Jun 24 10:32:18 2025
+Boot ROM Version: 12.03.00
+Serial Number: ADTRAN-LAB-0001

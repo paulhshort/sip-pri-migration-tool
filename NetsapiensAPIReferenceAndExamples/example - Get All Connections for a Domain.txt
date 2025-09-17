@@ -1,0 +1,121 @@
+REQUEST (Node/JS):
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.getDomainsDomainConnections({domain: 'grid4lab.com'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+
+
+RESPONSE:
+```
+
+[
+  {
+    "domain": "grid4lab.com",
+    "connection-orig-match-pattern": "sip*@grid4lab.pri",
+    "connection-term-match-pattern": "sip*@grid4lab.pri",
+    "active-calls-max-last-month": 0,
+    "active-calls-max-this-month": 0,
+    "active-calls-orig-current": 0,
+    "active-calls-orig-since-startup": 0,
+    "active-calls-term-current": 0,
+    "active-calls-term-since-startup": 0,
+    "call-routing": [
+      []
+    ],
+    "connection-address": "sip:9472018990@grid4lab.pri",
+    "connection-allow-mid-call-uri-updates-enabled": "no",
+    "connection-audio-relay-enabled": "yes",
+    "connection-bind-to-alternate-interface-enabled": "no",
+    "connection-block-media-in-sip-180-ringing": "no",
+    "connection-block-video-in-sdp-enabled": "no",
+    "connection-check-orig-matching-sip-header": "from",
+    "connection-enforce-minimum-duration-enabled": "no",
+    "connection-hide-post-dial-delay-with-ringback-enabled": "no",
+    "connection-include-server-header-enabled": "yes",
+    "connection-is-carrier-trunk": "no",
+    "connection-linked-billing-user": "domain",
+    "connection-orig-enabled": "yes",
+    "connection-pcmu-only-enabled": "no",
+    "connection-prevent-rtp-port-change-enabled": "no",
+    "connection-record-all-calls-enabled": "no",
+    "connection-relay-comfort-noise-enabled": "system-default",
+    "connection-remote-ringback-handling": "allowed",
+    "connection-require-encrypted-audio-enabled": "no",
+    "connection-require-sip-authentication-enabled": "no",
+    "connection-sip-authenticate-as-client-enabled": "no",
+    "connection-sip-get-new-dialog-destination-from": "default-ip",
+    "connection-sip-get-response-destination-from": "default-ip",
+    "connection-sip-registration-datetime": "",
+    "connection-sip-registration-expires-datetime": "",
+    "connection-sip-registration-password": "q32yIfGu1r4V",
+    "connection-sip-registration-realm": "grid4lab.com",
+    "connection-sip-registration-username": "9472018990",
+    "connection-sip-session-timer-enabled": "system-default",
+    "connection-sip-transport-protocol": "UDP",
+    "connection-source-ip-checking-enabled": "yes",
+    "connection-term-enabled": "yes",
+    "connection-translation-destination-host": "grid4lab.pri",
+    "connection-translation-destination-user": "[*]",
+    "connection-translation-request-host": "grid4lab.pri",
+    "connection-translation-request-user": "[*]",
+    "connection-translation-source-host": "<AppIP>",
+    "connection-translation-source-user": "[*]",
+    "description": "Lab PRI",
+    "dial-plan": "grid4lab.com",
+    "dial-policy": "US and Canada",
+    "last-modified-datetime": "2025-09-16T14:59:24+00:00",
+    "limits-max-active-calls-orig": 0,
+    "limits-max-active-calls-term": 0,
+    "limits-max-active-calls-total": 0,
+    "minimum-call-duration-seconds": 0,
+    "registration": {
+      "domain": "grid4lab.com",
+      "connection-orig-match-pattern": "sip:9472018990@grid4lab.pri",
+      "connection-term-match-pattern": "sip:9472018990@grid4lab.pri",
+      "authenticate_register": "yes",
+      "auto_ans": "no",
+      "call_processing_rule": "",
+      "caller-id-number-emergency": "[*]",
+      "connection-audio-relay-enabled": "automatic",
+      "connection-orig-enabled": "yes",
+      "connection-require-sip-authentication-enabled": "yes",
+      "connection-sip-authenticate-as-client-enabled": "yes",
+      "connection-sip-registration-datetime": "2025-09-16T15:36:39+00:00",
+      "connection-sip-registration-password": "q32yIfGu1r4V",
+      "connection-sip-registration-realm": "grid4lab.com",
+      "connection-term-enabled": "yes",
+      "contact": "sip:9472018990@8.2.147.30:5060;transport=UDP",
+      "core-server": "core1-ord.grid4voice.ucaas.tech",
+      "created-datetime": "2025-09-16T14:59:23+00:00",
+      "del_latency": 0.009082,
+      "device-provisioning-sip-transport-protocol": "udp",
+      "device-sip-allowed-user-agent": "",
+      "device-sip-latency-seconds-average": 0.066287,
+      "device-sip-latency-seconds-current": 0.08,
+      "device-sip-registration-expires-datetime": "2025-09-16T15:39:39+00:00",
+      "device-sip-registration-expiry-seconds": 60,
+      "device-sip-registration-state": "unregistered_endpoint",
+      "dial-plan": "",
+      "dial-policy": "",
+      "emergency-address-id": "",
+      "from_address": "sip:9472018990@grid4lab.pri",
+      "received_from": "8.2.147.30:5060",
+      "requires": "",
+      "service-code": "",
+      "subscriber_name": "domain",
+      "term_scheme": "sip:",
+      "term_user_trans": "",
+      "user_agent": "ADTRAN_Total_Access_908_2nd_Gen/R13.12.0.E",
+      "wan_ua": "yes",
+      "watch": "no"
+    },
+    "time-zone": "",
+    "utc-offset": ""
+  }
+]
+
+```

@@ -1,0 +1,10 @@
+Request example:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.getPhonenumbers({limit: '1000'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```

@@ -1,0 +1,8 @@
+!
+voice user 2485551212
+  connect fxs 0/4
+  sip-identity 1004 register auth-name 1004 password 4Mx9YYKlJ0iGjJdi
+!
+sip trunk demo-trunk
+  description Example trunk
+!

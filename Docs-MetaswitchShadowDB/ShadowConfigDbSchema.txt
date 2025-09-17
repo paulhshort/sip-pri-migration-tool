@@ -1,0 +1,2833 @@
+ShadowConfigDbSchema.txt
+------------------------
+
+This file documents the structure of the Shadow Configuration Database, and the
+mapping of Sh field names to database column names.
+
+For details concerning the use of the information in this file please consult
+the 'MetaView Shadow Configuration Database' chapter of the MetaSphere EAS,
+CommPortal and MetaView Reporting Manual.
+
+
+==================
+Database Structure
+==================
+The 'public' schema contains Shadow Configuration Database for the local
+MetaView Server (the server that you've connected to).
+
+There is also a 'cluster' schema, which allows access to the same data as the
+'public' schema, but aggregated across a cluster of MetaView Servers.  This can
+be used to make cluster wide queries, e.g. for a clustered CFS deployment.
+
+
+==============
+Access details
+==============
+
+Database software: PostgreSQL 13.10
+Port: 5432
+Name: shadow_config_db
+Username: shadowconfigread
+Obtain the password from your secure administrator, who can configure the password in the 'Configure database passwords' craft option.
+
+Access is restricted to read-only views, hereafter referred to as the 'tables'.
+
+
+==============
+List of tables
+==============
+
+Meta_AGCLine
+Meta_AGCPBX_Line
+Meta_ApplicationServer
+Meta_BGNumberBlock
+Meta_BGNumberBlock_ExcludedRange
+Meta_BusinessGroup
+Meta_BusinessGroup_DialingPlan_IntercomCodeRange
+Meta_BusinessGroup_DialingPlan_OrbitCodeRange
+Meta_BusinessGroup_DialingPlan_ShortCode
+Meta_CallPickupGroup
+Meta_CallServiceGroup
+Meta_ClusterSite
+Meta_ConfiguredSIPBinding
+Meta_Department
+Meta_FaultMonitoringProfile
+Meta_IMSCore
+Meta_ISDNPRI
+Meta_ISDNPRI_DS1
+Meta_ISUPCircuitGroup
+Meta_ISUPMediaChannel
+Meta_ManagedDevice
+Meta_MFCircuitGroup
+Meta_MFMediaChannel
+Meta_MFRemoteExchange
+Meta_MLHG
+Meta_NumberRange
+Meta_NumberRange_DMGRange
+Meta_PBX_DirectInwardCalling
+Meta_PBX_Line
+Meta_PersistentProfile
+Meta_PersistentProfile_DMGInformation
+Meta_ReservedNumberRange
+Meta_RoutingPolicy
+Meta_RoutingPolicy_Line
+Meta_SIPRegistrar
+Meta_SIPTrunk
+Meta_SubG
+Meta_SubG_AccessDevice
+Meta_Subscriber
+Meta_Subscriber_AdditionalIdentity
+Meta_SubscriberSchedule
+Meta_SubscriberSchedule_Period
+Meta_TAGAccessDevice
+Meta_TDMPort
+
+
+===============
+Table structure
+===============
+
+A table in general represents a Service Indication (SI) or group of SIs that
+can logically be stored together. For example, the Meta_Subscriber table
+contains a number of subscriber types (individual line, business group line
+PBX etc.)
+
+Each table can have the following field types:
+                row_id   a primary key for the record
+       <Sh field name>   a field name generated from the SI name and Sh
+                         field name as specified in the map below
+ <Sh field name>usedef   a boolean field indicating whether the
+                         corresponding field is inheriting its value from
+                         elsewhere e.g. a subscriber inheriting from its
+                         persistent profile. The absence of this field
+                         indicates that the field cannot inherit. A null
+                         value indicates that the field is not valid
+                         e.g. a call service is not configured.
+   <Non-Sh field name>   a field representing an identifier or index, or
+                         otherwise a field that is not available over Sh.
+
+
+For more documentation on Service Indications and the Sh fields within them
+please see the MetaView SOAP/XML interface schema, serviceData.xsd.
+
+The following Service Indications are not currently exposed over the
+published SOAP/XML interface. For documentation on these please see the
+Operations Manual for the appropriate object.
+(Note that the Sh field names listed in this file for these SIs are linked
+to the field names displayed in MetaView Explorer.)
+(Also note that not all fields visible in MetaView Explorer have columns
+in the database.)
+
+Meta_FaultMonitoringProfile
+Meta_ClusterSite
+Meta_ISUPCircuitGroup
+Meta_ISUPMediaChannel
+Meta_MFCircuitGroup
+Meta_MFMediaChannel
+Meta_SIPTrunk
+Meta_TDMPort
+
+
+===============================================
+Map of Sh fields names to database column names
+===============================================
+
+This map is of the following format:
+
+      <Database table name>
+      ---------------------
+        <SI name>
+          <Sh field name> : <Database column name>
+          ...
+
+        <SI name>
+        ...
+
+
+      <Database table name>
+      ---------------------
+      ...
+
+
+Meta_AGCLine
+------------
+  Meta_AGCLine_BaseInformation
+    LineType : BaseInformation_LineType
+    DirectoryNumber : BaseInformation_DirectoryNumber
+    PersistentProfile : BaseInformation_PersistentProfile
+    LineGroup : BaseInformation_LineGroup
+    SignalingType : BaseInformation_SignalingType
+    FlashHookCallServicesProvidedBy : BaseInformation_FlashHookCallServicesProvidedBy
+    SIPRegistrar : BaseInformation_SIPRegistrar
+    AccessDevice : BaseInformation_AccessDevice
+    AccessLineNumber : BaseInformation_AccessLineNumber
+    ISDNInterface : BaseInformation_ISDNInterface
+    ISDNDefaultBearerCapabilities : BaseInformation_ISDNDefaultBearerCapabilities
+    UseDNForIdentification : BaseInformation_UseDNForIdentification
+    SIPUserName : BaseInformation_SIPUserName
+    UseDomainFromRegistrar : BaseInformation_UseDomainFromRegistrar
+    SIPDomainName : BaseInformation_SIPDomainName
+    SIPAuthenticationRequired : BaseInformation_SIPAuthenticationRequired
+    NetworkNode : BaseInformation_NetworkNode
+    PreferredLocationOfTrunkGateway : BaseInformation_PreferredLocationOfTrunkGateway
+    SignalFunctionCode : BaseInformation_SignalFunctionCode
+    LineUsage : BaseInformation_LineUsage
+    GR303NailedUpConnection : BaseInformation_GR303NailedUpConnection
+    GR303DialType : BaseInformation_GR303DialType
+    FSKFormat : BaseInformation_FSKFormat
+    LineSideAnswerSupervisionSupported : BaseInformation_LineSideAnswerSupervisionSupported
+    AdjustForDaylightSavings : BaseInformation_AdjustForDaylightSavings
+    LineTimezone : BaseInformation_LineTimezone
+    EnabledDate : BaseInformation_EnabledDate
+    NetworkDisconnectSignalDuration : BaseInformation_NetworkDisconnectSignalDuration
+    AccessDevice : BaseInformation_AccessDeviceGateway
+
+  Meta_AGCLine_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+
+  Meta_AGCLine_LineClassCodes
+    LineClassCode1 : LineClassCodes_LineClassCode1
+    LineClassCode2 : LineClassCodes_LineClassCode2
+    LineClassCode3 : LineClassCodes_LineClassCode3
+    LineClassCode4 : LineClassCodes_LineClassCode4
+    LineClassCode5 : LineClassCodes_LineClassCode5
+    LineClassCode6 : LineClassCodes_LineClassCode6
+    LineClassCode7 : LineClassCodes_LineClassCode7
+    LineClassCode8 : LineClassCodes_LineClassCode8
+    LineClassCode9 : LineClassCodes_LineClassCode9
+    LineClassCode10 : LineClassCodes_LineClassCode10
+    LineClassCode11 : LineClassCodes_LineClassCode11
+    LineClassCode12 : LineClassCodes_LineClassCode12
+    LineClassCode13 : LineClassCodes_LineClassCode13
+    LineClassCode14 : LineClassCodes_LineClassCode14
+    LineClassCode15 : LineClassCodes_LineClassCode15
+    LineClassCode16 : LineClassCodes_LineClassCode16
+    LineClassCode17 : LineClassCodes_LineClassCode17
+    LineClassCode18 : LineClassCodes_LineClassCode18
+    LineClassCode19 : LineClassCodes_LineClassCode19
+    LineClassCode20 : LineClassCodes_LineClassCode20
+
+  Meta_AGCLine_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+    APITraceRemoteNumber : Diagnostics_APITraceRemoteNumber
+
+  Meta_AGCLine_TestCalls
+    OverridingConfigSet : TestCalls_OverridingConfigSet
+
+  Meta_AGCLine_3-WayCalling
+    Subscribed : _3WayCalling_Subscribed
+
+  Meta_AGCLine_CallTransfer
+    Subscribed : CallTransfer_Subscribed
+
+  Meta_AGCLine_CallHold
+    Subscribed : CallHold_Subscribed
+
+  Meta_AGCLine_CallWaiting
+    Subscribed : CallWaiting_Subscribed
+    Enabled : CallWaiting_Enabled
+
+  Meta_AGCLine_CallWaitingWithCallerID
+    Subscribed : CallWaitingWithCallerID_Subscribed
+
+  Meta_AGCLine_HomeIntercom
+    Subscribed : HomeIntercom_Subscribed
+    DistinctiveRinging : HomeIntercom_DistinctiveRinging
+
+  Meta_AGCLine_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_AGCLine_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_AGCLine_Voicemail
+    VisualMessageWaitingIndicator : Voicemail_VisualMessageWaitingIndicator
+    AudibleMessageWaitingIndicator : Voicemail_AudibleMessageWaitingIndicator
+
+  Meta_AGCLine_WarmHotLine
+    Subscribed : WarmHotLine_Subscribed
+    ServiceLevel : WarmHotLine_ServiceLevel
+    Timeout : WarmHotLine_Timeout
+    Number : WarmHotLine_Number
+
+  Meta_AGCPBX_BaseInformation
+    LineSelectionMethod : BaseInformation_LineSelectionMethod
+    PBXFixBits : BaseInformation_PBXFixBits
+    ANIDNISFormat : BaseInformation_ANIDNISFormat
+    UseNationalNumberingPlanOn10DigitCalls : BaseInformation_UseNationalNumberingPlanOn10DigitCalls
+    OutboundCalledPartyTON : BaseInformation_OutboundCalledPartyTON
+    NewSIPPassword : BaseInformation_NewSIPPassword
+    ConfirmNewSIPPassword : BaseInformation_ConfirmNewSIPPassword
+    SIPPassword : BaseInformation_SIPPassword
+    LDNPBXCapacityGroup : BaseInformation_LDNPBXCapacityGroup
+
+  Meta_AGCPBX_Alarms
+    AlarmState : Alarms_AlarmState
+    AlarmStateTimestamp : Alarms_AlarmStateTimestamp
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+
+
+Meta_AGCPBX_Line
+----------------
+  Meta_AGCPBX_LinesList
+    TerminalIndex : TerminalIndex
+    SignalingType : SignalingType
+    PBXLineUsage : PBXLineUsage
+    AccessDevice : AccessDevice
+    AccessLineNumber : AccessLineNumber
+    ISDNInterface : ISDNInterface
+    ISDNDefaultBearerCapabilities : ISDNDefaultBearerCapabilities
+    SignalFunctionCode : SignalFunctionCode
+    LineUsage : LineUsage
+    GR303NailedUpConnection : GR303NailedUpConnection
+    GR303DialType : GR303DialType
+    FSKFormat : FSKFormat
+    LineSideAnswerSupervisionSupported : LineSideAnswerSupervisionSupported
+    PBXPlaysRingback : PBXPlaysRingback
+    PBXPlaysDialtone : PBXPlaysDialtone
+    NetworkDisconnectSignalDuration : NetworkDisconnectSignalDuration
+    DiagnosticsLogLevel : DiagnosticsLogLevel
+    DiagnosticsAPITraceEnabled : DiagnosticsAPITraceEnabled
+    DiagnosticsAPITraceTag : DiagnosticsAPITraceTag
+    DiagnosticsAPITraceRemoteNumber : DiagnosticsAPITraceRemoteNumber
+    RequestedStatus : RequestedStatus
+    AccessDevice : Gateway
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    DirectoryNumber (IDENTIFIER)
+
+
+Meta_ApplicationServer
+----------------------
+  Meta_ApplicationServer_BaseInformation
+    DirectoryNumber : BaseInformation_DirectoryNumber
+    Description : BaseInformation_Description
+    ConfiguredSIPBinding : BaseInformation_ConfiguredSIPBinding
+    ServerType : BaseInformation_ServerType
+
+  Meta_ApplicationServer_Settings
+    ServerType : Settings_ServerType
+    TerminatingServerOnlyCorrelateSASTrails : Settings_TerminatingServerOnlyCorrelateSASTrails
+    DisableApplicationServerDuringBasicLineHunting : Settings_DisableApplicationServerDuringBasicLineHunting
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+
+
+Meta_BGNumberBlock
+------------------
+  Meta_BGNumberBlock_BaseInformation
+    DeviceTwinning : BaseInformation_DeviceTwinning
+    BlockSize : BaseInformation_BlockSize
+    FirstDirectoryNumber : BaseInformation_FirstDirectoryNumber
+    LastDirectoryNumber : BaseInformation_LastDirectoryNumber
+    SubscriberGroup : BaseInformation_SubscriberGroup
+    CreateEvenIfDirectoryNumbersInUse : BaseInformation_CreateEvenIfDirectoryNumbersInUse
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+
+
+Meta_BGNumberBlock_ExcludedRange
+--------------------------------
+  Meta_BGNumberBlock_ExcludedRangesList
+    ExcludedRangeSize : ExcludedRangeSize
+    FirstExcludedNumber : FirstExcludedNumber
+    LastExcludedNumber : LastExcludedNumber
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    NumberBlockStart (INDEX)
+
+
+Meta_BusinessGroup
+------------------
+  Meta_BusinessGroup_BaseInformation
+    BusinessGroupName : BaseInformation_BusinessGroupName
+    NetworkWideBusinessGroupID : BaseInformation_NetworkWideBusinessGroupID
+    DelegatedManagementGroup : BaseInformation_DelegatedManagementGroup
+    PersistentProfile : BaseInformation_PersistentProfile
+    SyncWithProfileInProgress : BaseInformation_SyncWithProfileInProgress
+    NetworkNode : BaseInformation_NetworkNode
+    LocalCNAMName : BaseInformation_LocalCNAMName
+    LongDistanceCarrier : BaseInformation_LongDistanceCarrier
+    IntraLATACarrier : BaseInformation_IntraLATACarrier
+    InternationalCarrier : BaseInformation_InternationalCarrier
+    Locale : BaseInformation_Locale
+    SecondLocale : BaseInformation_SecondLocale
+    BillingType : BaseInformation_BillingType
+    BillingTypeIntraBGCalls : BaseInformation_BillingTypeIntraBGCalls
+    TreatBGMembersCallsWithFullDNAsIntraBG : BaseInformation_TreatBGMembersCallsWithFullDNAsIntraBG
+    RoutingAttributes : BaseInformation_RoutingAttributes
+    BusinessGroupForcedOffSwitchRouting : BaseInformation_BusinessGroupForcedOffSwitchRouting
+    DenyAllUsageSensitiveFeatures : BaseInformation_DenyAllUsageSensitiveFeatures
+    DistinctiveAlerting : BaseInformation_DistinctiveAlerting
+    ServiceSuspended : BaseInformation_ServiceSuspended
+    NumberOfManagedDevices : BaseInformation_NumberOfManagedDevices
+    EnableAdvancedAlertingFeatures : BaseInformation_EnableAdvancedAlertingFeatures
+    BusinessGroupTrafficStudy : BaseInformation_BusinessGroupTrafficStudy
+    SendAdvancedSIPMessagesToServiceAssuranceServer : BaseInformation_SendAdvancedSIPMessagesToServiceAssuranceServer
+    BusinessGroupCallLogsEnabled : BaseInformation_BusinessGroupCallLogsEnabled
+    AllowBGAdminChangeExpMod : BaseInformation_AllowBGAdminChangeExpMod
+    AllowBGAdminControlPBXCallLimits : BaseInformation_AllowBGAdminControlPBXCallLimits
+    BusinessGroupPrefixCallerIDWithExternalLineCodeIfPresent : BaseInformation_BusinessGroupPrefixCaller__eCodeIfPresent
+    BusinessGroupLinesSharePresence : BaseInformation_BusinessGroupLinesSharePresence
+    AlwaysUseSubDNAsCIDForCallsFromMobLines : BaseInformation_AlwaysUseSubDNAsCIDForCallsFromMobLines
+    AllowSubscribersToOverrideConfiguredCPN : BaseInformation_AllowSubscribersToOverrideConfiguredCPN
+    AllowBGAdminToConfigCallingPartyNumber : BaseInformation_AllowBGAdminToConfigCallingPartyNumber
+    SwitchsUniqueBGID : BaseInformation_SwitchsUniqueBGID
+    SASHostname : BaseInformation_SASHostname
+    DefaultBusinessGroupLinePrivileges : BaseInformation_DefaultBusinessGroupLinePrivileges
+    SubscriberGroupForNonReservedNumbers : BaseInformation_SubscriberGroupForNonReservedNumbers
+    AllowRehoming : BaseInformation_AllowRehoming
+    PreferredSite : BaseInformation_PreferredSite
+    CreationTimestamp : BaseInformation_CreationTimestamp
+    FeaturesSupportedFlags : BaseInformation_FeaturesSupportedFlags
+
+  Meta_BusinessGroup_LineClassCodes
+    LineClassCode1 : LineClassCodes_LineClassCode1
+    LineClassCode2 : LineClassCodes_LineClassCode2
+    LineClassCode3 : LineClassCodes_LineClassCode3
+    LineClassCode4 : LineClassCodes_LineClassCode4
+    LineClassCode5 : LineClassCodes_LineClassCode5
+    LineClassCode6 : LineClassCodes_LineClassCode6
+    LineClassCode7 : LineClassCodes_LineClassCode7
+    LineClassCode8 : LineClassCodes_LineClassCode8
+    LineClassCode9 : LineClassCodes_LineClassCode9
+    LineClassCode10 : LineClassCodes_LineClassCode10
+    LineClassCode11 : LineClassCodes_LineClassCode11
+    LineClassCode12 : LineClassCodes_LineClassCode12
+    LineClassCode13 : LineClassCodes_LineClassCode13
+    LineClassCode14 : LineClassCodes_LineClassCode14
+    LineClassCode15 : LineClassCodes_LineClassCode15
+    LineClassCode16 : LineClassCodes_LineClassCode16
+    LineClassCode17 : LineClassCodes_LineClassCode17
+    LineClassCode18 : LineClassCodes_LineClassCode18
+    LineClassCode19 : LineClassCodes_LineClassCode19
+    LineClassCode20 : LineClassCodes_LineClassCode20
+
+  Meta_BusinessGroup_LineStateMonitoring
+    RestrictedLineStateMonitoringNotifications : LineStateMonitoring_RestrictedLineStateMonitoringNotifications
+
+  Meta_BusinessGroup_MultiLineHuntGroups
+    StatisticsEnabled : MultiLineHuntGroups_StatisticsEnabled
+    MultipleLoginsAllowed : MultiLineHuntGroups_MultipleLoginsAllowed
+    InterruptMOHToProvideRingback : MultiLineHuntGroups_InterruptMOHToProvideRingback
+
+  Meta_BusinessGroup_MLHGAutomatedCallDistribution
+    MWBEnabled : MLHGAutomatedCallDistribution_MWBEnabled
+    AgentStatusRefreshInterval : MLHGAutomatedCallDistribution_AgentStatusRefreshInterval
+    AvailabilityEnabled : MLHGAutomatedCallDistribution_AvailabilityEnabled
+    UnavailabilityReason1 : MLHGAutomatedCallDistribution_UnavailabilityReason1
+    UnavailabilityReason2 : MLHGAutomatedCallDistribution_UnavailabilityReason2
+    UnavailabilityReason3 : MLHGAutomatedCallDistribution_UnavailabilityReason3
+    UnavailabilityReason4 : MLHGAutomatedCallDistribution_UnavailabilityReason4
+    UnavailabilityReason5 : MLHGAutomatedCallDistribution_UnavailabilityReason5
+    UnavailabilityReason6 : MLHGAutomatedCallDistribution_UnavailabilityReason6
+    UnavailabilityReason7 : MLHGAutomatedCallDistribution_UnavailabilityReason7
+    UnavailabilityReason8 : MLHGAutomatedCallDistribution_UnavailabilityReason8
+    UnavailabilityReason9 : MLHGAutomatedCallDistribution_UnavailabilityReason9
+    UnavailabilityReason10 : MLHGAutomatedCallDistribution_UnavailabilityReason10
+    UnavailabilityReason11 : MLHGAutomatedCallDistribution_UnavailabilityReason11
+    UnavailabilityReason12 : MLHGAutomatedCallDistribution_UnavailabilityReason12
+    UnavailabilityReason13 : MLHGAutomatedCallDistribution_UnavailabilityReason13
+    UnavailabilityReason14 : MLHGAutomatedCallDistribution_UnavailabilityReason14
+    UnavailabilityReason15 : MLHGAutomatedCallDistribution_UnavailabilityReason15
+    UnavailabilityReason16 : MLHGAutomatedCallDistribution_UnavailabilityReason16
+    UnavailabilityReason17 : MLHGAutomatedCallDistribution_UnavailabilityReason17
+    UnavailabilityReason18 : MLHGAutomatedCallDistribution_UnavailabilityReason18
+    UnavailabilityReason19 : MLHGAutomatedCallDistribution_UnavailabilityReason19
+    UnavailabilityReason20 : MLHGAutomatedCallDistribution_UnavailabilityReason20
+    UnavailabilityReason21 : MLHGAutomatedCallDistribution_UnavailabilityReason21
+    UnavailabilityReason22 : MLHGAutomatedCallDistribution_UnavailabilityReason22
+    UnavailabilityReason23 : MLHGAutomatedCallDistribution_UnavailabilityReason23
+    UnavailabilityReason24 : MLHGAutomatedCallDistribution_UnavailabilityReason24
+    UnavailabilityReason25 : MLHGAutomatedCallDistribution_UnavailabilityReason25
+    UnavailabilityReason26 : MLHGAutomatedCallDistribution_UnavailabilityReason26
+    UnavailabilityReason27 : MLHGAutomatedCallDistribution_UnavailabilityReason27
+    UnavailabilityReason28 : MLHGAutomatedCallDistribution_UnavailabilityReason28
+    UnavailabilityReason29 : MLHGAutomatedCallDistribution_UnavailabilityReason29
+    UnavailabilityReason30 : MLHGAutomatedCallDistribution_UnavailabilityReason30
+    BasicACDLicenses : MLHGAutomatedCallDistribution_BasicACDLicenses
+    NumberOfBasicACDLicenses : MLHGAutomatedCallDistribution_NumberOfBasicACDLicenses
+    PremiumACDLicenses : MLHGAutomatedCallDistribution_PremiumACDLicenses
+    NumberOfPremiumACDLicenses : MLHGAutomatedCallDistribution_NumberOfPremiumACDLicenses
+
+  Meta_BusinessGroup_PBXLineCallLimits
+    TotalCallsLimit : PBXLineCallLimits_TotalCallsLimit
+    MaximumCalls : PBXLineCallLimits_MaximumCalls
+    TerminatingCallsLimit : PBXLineCallLimits_TerminatingCallsLimit
+    MaximumTerminatingCalls : PBXLineCallLimits_MaximumTerminatingCalls
+    OriginatingCallsLimit : PBXLineCallLimits_OriginatingCallsLimit
+    MaximumOriginatingCalls : PBXLineCallLimits_MaximumOriginatingCalls
+    TotalBurstingLimit : PBXLineCallLimits_TotalBurstingLimit
+    MaximumBurstingCalls : PBXLineCallLimits_MaximumBurstingCalls
+    LimitIntraBGCalls : PBXLineCallLimits_LimitIntraBGCalls
+
+  Meta_BusinessGroup_FacilityGroupLimits
+    ExternalCalls : FacilityGroupLimits_ExternalCalls
+    MaximumExternalCalls : FacilityGroupLimits_MaximumExternalCalls
+    TerminatingCalls : FacilityGroupLimits_TerminatingCalls
+    MaximumTerminatingCalls : FacilityGroupLimits_MaximumTerminatingCalls
+    OriginatingCalls : FacilityGroupLimits_OriginatingCalls
+    MaximumOriginatingCalls : FacilityGroupLimits_MaximumOriginatingCalls
+
+  Meta_BusinessGroup_OutgoingCallNotifications
+    Subscribed : OutgoingCallNotifications_Subscribed
+    ApplicationServer : OutgoingCallNotifications_ApplicationServer
+    CallTypes : OutgoingCallNotifications_CallTypes
+
+  Meta_BusinessGroup_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+
+  Meta_BusinessGroup_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_BusinessGroup_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+    AlarmState : Alarms_AlarmState
+
+  Meta_BusinessGroup_DialingPlan
+    ExternalLineCode : DialingPlan_ExternalLineCode
+    StarReplacementForPulseDialing : DialingPlan_StarReplacementForPulseDialing
+    VoicemailCodePrefix : DialingPlan_VoicemailCodePrefix
+    SimpleMatchingAutomaticallyApplied : DialingPlan_SimpleMatchingAutomaticallyApplied
+    ForceSimpleMatching : DialingPlan_ForceSimpleMatching
+    InterSwitchBusinessGroupDialingPermitted : DialingPlan_InterSwitchBusinessGroupDialingPermitted
+    IntercomCodeDigitMap : DialingPlan_IntercomCodeDigitMap
+
+  Meta_BusinessGroup_MusicOnHoldService
+    MOHSubscribed : MusicOnHoldService_MOHSubscribed
+    MOHLevel : MusicOnHoldService_MOHLevel
+    MOHEnhancedServer : MusicOnHoldService_MOHEnhancedServer
+    EnhancedMOHMigration : MusicOnHoldService_EnhancedMOHMigration
+    MOHServiceClass : MusicOnHoldService_MOHServiceClass
+    LimitConcurrentCalls : MusicOnHoldService_LimitConcurrentCalls
+    MaxConcurrentCalls : MusicOnHoldService_MaxConcurrentCalls
+
+  Meta_BusinessGroup_RecordingService
+    PlayToneDuringRecordings : RecordingService_PlayToneDuringRecordings
+    AllowRecordingOfIntraBusinessGroupCalls : RecordingService_AllowRecordingOfIntraBusinessGroupCalls
+
+  Meta_BusinessGroup_CallPark
+    Subscribed : CallPark_Subscribed
+    MaxNumOfOrbits : CallPark_MaxNumOfOrbits
+    TimedRecall : CallPark_TimedRecall
+    TimedRecallTimerDuration : CallPark_TimedRecallTimerDuration
+    Timeout : CallPark_Timeout
+    MessageForCallParkAnnouncement : CallPark_MessageForCallParkAnnouncement
+    MessageForSuccessfulCallPark : CallPark_MessageForSuccessfulCallPark
+    MessageForUnsuccessfulCallPark : CallPark_MessageForUnsuccessfulCallPark
+
+  Meta_BusinessGroup_CallPickup
+    Subscribed : CallPickup_Subscribed
+
+  Meta_BusinessGroup_DirectedPickupNoBarge-in
+    DirectedPickupNoBargeInSubscribed : DirectedPickupNoBargeIn_Subscribed
+    DirectedPickupNoBargeInDefaultBusinessGroupLineSetting : DirectedPickupNoBargeIn_DefaultBusinessGroupLineSetting
+
+  Meta_BusinessGroup_CallBarring
+    ExemptBusinessGroupCallsFromCallBarring : CallBarring_ExemptBusinessGroupCallsFromCallBarring
+
+  Meta_BusinessGroup_MandatoryAccountCodes
+    Subscribed : MandatoryAccountCodes_Subscribed
+    DefaultVariant : MandatoryAccountCodes_DefaultVariant
+    AllowSubOverride : MandatoryAccountCodes_AllowSubOverride
+    UKDefaultCallTypes : MandatoryAccountCodes_UKDefaultCallTypes
+    USDefaultCallTypes : MandatoryAccountCodes_USDefaultCallTypes
+    AllowCallTypesOverride : MandatoryAccountCodes_AllowCallTypesOverride
+    DefaultCodeLength : MandatoryAccountCodes_DefaultCodeLength
+    AllowCodeLengthOverride : MandatoryAccountCodes_AllowCodeLengthOverride
+    UserViewBGCodes : MandatoryAccountCodes_UserViewBGCodes
+    SubEditBGLineCodes : MandatoryAccountCodes_SubEditBGLineCodes
+    DefaultMaxIncorrectCodesPerCall : MandatoryAccountCodes_DefaultMaxIncorrectCodesPerCall
+    DefaultMaxIncorrectCodes : MandatoryAccountCodes_DefaultMaxIncorrectCodes
+    ValidAccountCodes : MandatoryAccountCodes_ValidAccountCodes
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_BusinessGroupName_insensitive
+    NetworkElementName (IDENTIFIER)
+    GroupIndex (INDEX)
+
+
+Meta_BusinessGroup_DialingPlan_IntercomCodeRange
+------------------------------------------------
+  Meta_BusinessGroup_DialingPlan_IntercomCodeRangesList
+    FirstCode : FirstCode
+    LastCode : LastCode
+    FirstDirectoryNumber : FirstDirectoryNumber
+    LastDirectoryNumber : LastDirectoryNumber
+    LocationPrefixLength : LocationPrefixLength
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+
+
+Meta_BusinessGroup_DialingPlan_OrbitCodeRange
+---------------------------------------------
+  Meta_BusinessGroup_DialingPlan_OrbitCodeRangesList
+    FirstOrbitCode : FirstOrbitCode
+    LastOrbitCode : LastOrbitCode
+    Department : Department
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+
+
+Meta_BusinessGroup_DialingPlan_ShortCode
+----------------------------------------
+  Meta_BusinessGroup_DialingPlan_ShortCodesList
+    Type : _Type
+    FirstShortCode : FirstShortCode
+    LastShortCode : LastShortCode
+    Name : _Name
+    FirstExternalDirectoryNumber : FirstExternalDirectoryNumber
+    LastExternalDirectoryNumber : LastExternalDirectoryNumber
+    DialingPlanCode : DialingPlanCode
+    Department : Department
+    ShortCodeForInterSwitchBusinessGroup : ShortCodeForInterSwitchBusinessGroup
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+
+
+Meta_CallPickupGroup
+--------------------
+  Meta_CallPickupGroup_BaseInformation
+    GroupName : BaseInformation_GroupName
+    Department : BaseInformation_Department
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    CallPickupGroupIndex (INDEX)
+
+
+Meta_CallServiceGroup
+---------------------
+  Meta_CallServiceGroup_UnconditionalCallForwarding
+    Variant : UnconditionalCallForwarding_Variant
+    OverridableEnabled : UnconditionalCallForwarding_OverridableEnabled
+    OverridableNumber : UnconditionalCallForwarding_OverridableNumber
+    SingleRing : UnconditionalCallForwarding_SingleRing
+
+  Meta_CallServiceGroup_UnavailableCallForwarding
+    OverridableEnabled : UnavailableCallForwarding_OverridableEnabled
+    OverridableNumber : UnavailableCallForwarding_OverridableNumber
+
+  Meta_CallServiceGroup_BaseInformation
+    NumberOfReferencingSubscribers : BaseInformation_NumberOfReferencingSubscribers
+    CSGName : BaseInformation_CSGName
+    OverridableCallingPartyNumber : BaseInformation_OverridableCallingPartyNumber
+    Department : BaseInformation_Department
+    AllowOverrideOfInhSubBarredCallTypes : BaseInformation_AllowOverrideOfInhSubBarredCallTypes
+    CSGIsReferencedBySubscribers : BaseInformation_CSGIsReferencedBySubscribers
+
+  Meta_CallServiceGroup_CallBarring
+    CurrentSubscriberBarredCallTypes : CallBarring_CurrentSubscriberBarredCallTypes
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    CSGIndex (INDEX)
+
+
+Meta_ClusterSite
+----------------
+  Meta_ClusterSite_BaseInformation
+    ClusterSiteConnectionIndex : BaseInformation_ClusterSiteConnectionIndex
+    IPAddress : BaseInformation_IPAddress
+    SiteName : BaseInformation_SiteName
+    SiteID : BaseInformation_SiteID
+
+  Non-Sh Fields
+    row_id (UNIQUE DATABASE ROW ID)
+
+
+Meta_ConfiguredSIPBinding
+-------------------------
+  Meta_ConfiguredSIPBinding_BaseInformation
+    Name : BaseInformation_Name
+    DelegatedManagementGroup : BaseInformation_DelegatedManagementGroup
+    Usage : BaseInformation_Usage
+    PBXApplicationServer : BaseInformation_PBXApplicationServer
+    LearnsContactDetails : BaseInformation_LearnsContactDetails
+    UseDNForIdentification : BaseInformation_UseDNForIdentification
+    DNIDInE164Format : BaseInformation_DNIDInE164Format
+    SIPAuthenticationRequired : BaseInformation_SIPAuthenticationRequired
+    SIPUserName : BaseInformation_SIPUserName
+    SIPDomainName : BaseInformation_SIPDomainName
+    ContactAddressMatchRequired : BaseInformation_ContactAddressMatchRequired
+    IPAddressMatchRequired : BaseInformation_IPAddressMatchRequired
+    ContactURI : BaseInformation_ContactURI
+    ContactAddressScheme : BaseInformation_ContactAddressScheme
+    ContactIPAddress : BaseInformation_ContactIPAddress
+    ICSCFContactIPAddress : BaseInformation_ICSCFContactIPAddress
+    ContactIPPort : BaseInformation_ContactIPPort
+    ICSCFContactIPPort : BaseInformation_ICSCFContactIPPort
+    AdditionalInboundContactIPAddresses : BaseInformation_AdditionalInboundContactIPAddresses
+    NoDTMFHubIfNotTerminatingMedia : BaseInformation_NoDTMFHubIfNotTerminatingMedia
+    MediaIPAddress : BaseInformation_MediaIPAddress
+    ContactName : BaseInformation_ContactName
+    ContactExpiryTime : BaseInformation_ContactExpiryTime
+    ContactDomainName : BaseInformation_ContactDomainName
+    ICSCFContactDomainName : BaseInformation_ICSCFContactDomainName
+    SupportedPreferredMediaAddressFamilies : BaseInformation_SupportedPreferredMediaAddressFamilies
+    SupportedIncomingTrunkGroupParameterType : BaseInformation_SupportedIncomingTrunkGroupParameterType
+    TrunkGroupParameterTypeOnOutgoingMessages : BaseInformation_TrunkGroupParameterTypeOnOutgoingMessages
+    VirtualTrunkGroupID : BaseInformation_VirtualTrunkGroupID
+    VirtualTrunkContext : BaseInformation_VirtualTrunkContext
+    ProxyAddressScheme : BaseInformation_ProxyAddressScheme
+    ProxyIPAddress : BaseInformation_ProxyIPAddress
+    ProxyIPPort : BaseInformation_ProxyIPPort
+    AdditionalInboundProxyIPAddresses : BaseInformation_AdditionalInboundProxyIPAddresses
+    ProxyDomainName : BaseInformation_ProxyDomainName
+    TransportProtocol : BaseInformation_TransportProtocol
+    UseProxyIPOnTCPAppServers : BaseInformation_UseProxyIPOnTCPAppServers
+    SignalingType : BaseInformation_SignalingType
+    MediaGatewayModel : BaseInformation_MediaGatewayModel
+    UseMediaIPAddressForNetworkNodeAssignment : BaseInformation_UseMediaIPAddressForNetworkNodeAssignment
+    SIPBindingLocation : BaseInformation_SIPBindingLocation
+    ESAProtectionDomain : BaseInformation_ESAProtectionDomain
+    Trusted : BaseInformation_Trusted
+    UseCallerNameProvidedBySIPDevice : BaseInformation_UseCallerNameProvidedBySIPDevice
+    UseSTIRSHAKENParametersProvidedBySIPDevice : BaseInformation_UseSTIRSHAKENParametersProvidedBySIPDevice
+    PlayAnnouncementsWhenErrorConditionsOccur : BaseInformation_PlayAnnouncementsWhenErrorConditionsOccur
+    UseStaticNATMapping : BaseInformation_UseStaticNATMapping
+    MaximumCallAppearances : BaseInformation_MaximumCallAppearances
+    MaximumConcurrentHighBandwidthCallAppearancesAllowed : BaseInformation_MaximumConcurrentHighBandwidthC__arancesAllowed
+    MaximumPermittedContactRefreshInterval : BaseInformation_MaximumPermittedContactRefreshInterval
+    PollPeerDevice : BaseInformation_PollPeerDevice
+    PollingInterval : BaseInformation_PollingInterval
+    UseCustomSIPINVITEResponseTimeout : BaseInformation_UseCustomSIPINVITEResponseTimeout
+    SIPINVITEResponseTimeout : BaseInformation_SIPINVITEResponseTimeout
+    AutomaticRecovery : BaseInformation_AutomaticRecovery
+    AutomaticRecoveryInterval : BaseInformation_AutomaticRecoveryInterval
+    PollCallPaths : BaseInformation_PollCallPaths
+    ConcurrentNumberOfCallAppearancesInUse : BaseInformation_ConcurrentNumberOfCallAppearancesInUse
+    ConcurrentNumberOfHighBandwidthCallAppearancesInUse : BaseInformation_ConcurrentNumberOfHighBandwidth__pearancesInUse
+    CallGuardianAuthenticationHub : BaseInformation_CallGuardianAuthenticationHub
+    SuppressRedirectionInformation : BaseInformation_SuppressRedirectionInformation
+    ForceValidationOfRedirectionNumber : BaseInformation_ForceValidationOfRedirectionNumber
+    PerformTranslationsOnRedirectedNumbers : BaseInformation_PerformTranslationsOnRedirectedNumbers
+    SelectNewTrunkOn3xxResponse : BaseInformation_SelectNewTrunkOn3xxResponse
+    UseNormalTrunkRoutingTablesToMatchTgId : BaseInformation_UseNormalTrunkRoutingTablesToMatchTgId
+    AllowBothDNAndTGChangesInSingleTFL3xxResponse : BaseInformation_AllowBothDNAndTGChangesInSingleTFL3xxResponse
+    RouteDirectlyOnTGIDForTFLResponses : BaseInformation_RouteDirectlyOnTGIDForTFLResponses
+    TreatmentOf3xxTGParametersUsedForRouting : BaseInformation_TreatmentOf3xxTGParametersUsedForRouting
+    MaximumNumberOfUntranslatedRedirections : BaseInformation_MaximumNumberOfUntranslatedRedirections
+    ReturnCodesPreventingCallRedirection : BaseInformation_ReturnCodesPreventingCallRedirection
+    SignalCallingPartyLATAOnOutboundRequests : BaseInformation_SignalCallingPartyLATAOnOutboundRequests
+    TransparentHeaders : BaseInformation_TransparentHeaders
+    OutboundRouteHeaderUserPart : BaseInformation_OutboundRouteHeaderUserPart
+    DeactivationMode : BaseInformation_DeactivationMode
+    StatisticsEnabled : BaseInformation_StatisticsEnabled
+    PollServiceRoutes : BaseInformation_PollServiceRoutes
+    ServiceRoutePollingInterval : BaseInformation_ServiceRoutePollingInterval
+
+  Meta_ConfiguredSIPBinding_SIPProtocolOptions
+    SIPProtocolOptsSIPType : SIPProtocolOptions_SIPProtocolOptsSIPType
+    SIPProtocolOptsISUPVariant : SIPProtocolOptions_SIPProtocolOptsISUPVariant
+    SIPProtocolOptsDisallowSigForLRN : SIPProtocolOptions_SIPProtocolOptsDisallowSigForLRN
+    SIPProtocolOptsUseISUPCalledAddrPfxInfo : SIPProtocolOptions_SIPProtocolOptsUseISUPCalledAddrPfxInfo
+    ActiveHopCounting : SIPProtocolOptions_ActiveHopCounting
+    SIPProtocolOptsAcceptTNSParam : SIPProtocolOptions_SIPProtocolOptsAcceptTNSParam
+    SIPProtocolOptsUSIParamCodingType : SIPProtocolOptions_SIPProtocolOptsUSIParamCodingType
+    SIPProtocolOptsInclChgeNumAndOutgoingLineInfo : SIPProtocolOptions_SIPProtocolOptsInclChgeNumAn__tgoingLineInfo
+    SIPProtocolOptsInclJurisdictionInformationParam : SIPProtocolOptions_SIPProtocolOptsInclJurisdict__formationParam
+    SIPProtocolOptsInclRedirectionNumParam : SIPProtocolOptions_SIPProtocolOptsInclRedirectionNumParam
+    SIPProtocolOptsInclRedirectionInfoParam : SIPProtocolOptions_SIPProtocolOptsInclRedirectionInfoParam
+    SIPProtocolOptsInclOrigCalledNumParam : SIPProtocolOptions_SIPProtocolOptsInclOrigCalledNumParam
+    SIPProtocolOptsInclAccessTransportParam : SIPProtocolOptions_SIPProtocolOptsInclAccessTransportParam
+    SIPProtocolOptsInclGenericAddrParam : SIPProtocolOptions_SIPProtocolOptsInclGenericAddrParam
+    SIPProtocolOptsInclGenericNameParam : SIPProtocolOptions_SIPProtocolOptsInclGenericNameParam
+    SIPProtocolOptsIncludePartyInfoParam : SIPProtocolOptions_SIPProtocolOptsIncludePartyInfoParam
+    SIPProtocolOptsInclRedirectCapabilityParam : SIPProtocolOptions_SIPProtocolOptsInclRedirectCapabilityParam
+    SIPProtocolOptsInclCIPParameter : SIPProtocolOptions_SIPProtocolOptsInclCIPParameter
+    SIPProtocolOptsUserToUserInformationParameter : SIPProtocolOptions_SIPProtocolOptsUserToUserInf__ationParameter
+    SIPProtocolOptsIncludeBusinessGroupParameter : SIPProtocolOptions_SIPProtocolOptsIncludeBusinessGroupParameter
+    SIPProtocolOptsIncludeConnectedNumber : SIPProtocolOptions_SIPProtocolOptsIncludeConnectedNumber
+    SIPProtocolOptsGenerateConfusion : SIPProtocolOptions_SIPProtocolOptsGenerateConfusion
+    SIPProtocolOptsUseISUPCallingDetails : SIPProtocolOptions_SIPProtocolOptsUseISUPCallingDetails
+    SIPProtocolOptsSuppRecvNumbersFailScreen : SIPProtocolOptions_SIPProtocolOptsSuppRecvNumbersFailScreen
+    SIPProtocolOptsHonorsCallingNumAPRI : SIPProtocolOptions_SIPProtocolOptsHonorsCallingNumAPRI
+    SIPProtocolOptsGIsupRole : SIPProtocolOptions_SIPProtocolOptsGIsupRole
+    SIPProtocolOptsT6TimerDuration : SIPProtocolOptions_SIPProtocolOptsT6TimerDuration
+    SIPProtocolOptsT38TimerDuration : SIPProtocolOptions_SIPProtocolOptsT38TimerDuration
+    SIPProtocolOptsSUSTimerDuration : SIPProtocolOptions_SIPProtocolOptsSUSTimerDuration
+    SIPProtocolOptsTrunkRoleCliAbnp : SIPProtocolOptions_SIPProtocolOptsTrunkRoleCliAbnp
+    SIPProtocolOptsAbnpValue : SIPProtocolOptions_SIPProtocolOptsAbnpValue
+    SIPProtocolOptsRemoveIsupParameters : SIPProtocolOptions_SIPProtocolOptsRemoveIsupParameters
+    SIPProtocolOptsMIMEVersionParam : SIPProtocolOptions_SIPProtocolOptsMIMEVersionParam
+    SIPProtocolOptsMIMEBaseParam : SIPProtocolOptions_SIPProtocolOptsMIMEBaseParam
+    SIPProtocolOptsMIMEHandlingParam : SIPProtocolOptions_SIPProtocolOptsMIMEHandlingParam
+
+  Meta_ConfiguredSIPBinding_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+
+  Meta_ConfiguredSIPBinding_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_ConfiguredSIPBinding_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_ConfiguredSIPBinding_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_ConfiguredSIPBinding_SubscriberRe-registerTriggers
+    SubscriberReregisterTriggersResponseCodes : SubscriberReRegisterTriggers_SubscriberReregist__sResponseCodes
+    SubscriberReregisterTriggersInviteTimeOut : SubscriberReRegisterTriggers_SubscriberReregist__sInviteTimeOut
+    SubscriberReregisterTriggersDelayedCallerHangUp : SubscriberReRegisterTriggers_SubscriberReregist__edCallerHangUp
+    SubscriberReregisterTriggersMinimumCallerHangUpDelay : SubscriberReRegisterTriggers_SubscriberReregist__lerHangUpDelay
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    BindingIndex (INDEX)
+
+
+Meta_Department
+---------------
+  Meta_Department_BaseInformation
+    Name : BaseInformation_Name
+    FullName : BaseInformation_FullName
+    ParentDepartment : BaseInformation_ParentDepartment
+
+  Meta_Department_DepartmentCallLimits
+    ExternalCallsSupport : DepartmentCallLimits_ExternalCallsSupport
+    MaximumExternalCalls : DepartmentCallLimits_MaximumExternalCalls
+    TerminatingCallsSupport : DepartmentCallLimits_TerminatingCallsSupport
+    MaximumTerminatingCalls : DepartmentCallLimits_MaximumTerminatingCalls
+    OriginatingCallsSupport : DepartmentCallLimits_OriginatingCallsSupport
+    MaximumOriginatingCalls : DepartmentCallLimits_MaximumOriginatingCalls
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    DepartmentIndex (INDEX)
+
+
+Meta_FaultMonitoringProfile
+---------------------------
+  Meta_FaultMonitoringProfile_BaseInformation
+    FMPName : BaseInformation_FMPName
+    SuppressAlarms : BaseInformation_SuppressAlarms
+    ChangeToAlarmSeverity : BaseInformation_ChangeToAlarmSeverity
+
+  Non-Sh Fields
+    row_id (UNIQUE DATABASE ROW ID)
+    FMPIndex (INDEX)
+
+
+Meta_IMSCore
+------------
+  Meta_IMSCore_BaseInformation
+    Name : BaseInformation_Name
+    Description : BaseInformation_Description
+    ConfiguredSIPBinding : BaseInformation_ConfiguredSIPBinding
+    DeactivationMode : BaseInformation_DeactivationMode
+
+  Meta_IMSCore_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_IMSCore_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_IMSCore_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    SIPTrunkIndex (INDEX)
+
+
+Meta_ISDNPRI
+------------
+  Meta_ISDNPRI_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+
+  Meta_ISDNPRI_D-Channels
+    DChannelBackupAvailable : DChannels_DChannelBackupAvailable
+    PrimaryDChannelDS0 : DChannels_PrimaryDChannelDS0
+    PrimaryDChannelDS1 : DChannels_PrimaryDChannelDS1
+    PrimaryDChannelSCTPAssociation : DChannels_PrimaryDChannelSCTPAssociation
+    ConfiguredPrimaryDChannelIUASCTPIdentifier : DChannels_ConfiguredPrimaryDChannelIUASCTPIdentifier
+    SecondaryDChannelDS0 : DChannels_SecondaryDChannelDS0
+    SecondaryDChannelDS1 : DChannels_SecondaryDChannelDS1
+    SecondaryDChannelSCTPAssociation : DChannels_SecondaryDChannelSCTPAssociation
+    ConfiguredSecondaryDChannelIUASCTPIdentifier : DChannels_ConfiguredSecondaryDChannelIUASCTPIdentifier
+
+  Meta_ISDNPRI_BaseInformation
+    PRIIndex : BaseInformation_PRIIndex
+    Description : BaseInformation_Description
+    Usage : BaseInformation_Usage
+    PrimaryRateInterfaceProfile : BaseInformation_PrimaryRateInterfaceProfile
+    DS1Type : BaseInformation_DS1Type
+    TrunkGroupNumber : BaseInformation_TrunkGroupNumber
+    NetworkNumber : BaseInformation_NetworkNumber
+    RecordIncomingCDRs : BaseInformation_RecordIncomingCDRs
+    RecordOutgoingCDRs : BaseInformation_RecordOutgoingCDRs
+    STIRSHAKENAttestationLevel : BaseInformation_STIRSHAKENAttestationLevel
+    STIRSHAKENOriginationID : BaseInformation_STIRSHAKENOriginationID
+    ForceEchoCancellationOnInboundCalls : BaseInformation_ForceEchoCancellationOnInboundCalls
+    SupportedCallDirections : BaseInformation_SupportedCallDirections
+    DirectIXCConnection : BaseInformation_DirectIXCConnection
+    NFASInterface : BaseInformation_NFASInterface
+    SupportedBearerCapabilities : BaseInformation_SupportedBearerCapabilities
+    BearerCapabilitiesWithNoPrimarySubscriber : BaseInformation_BearerCapabilitiesWithNoPrimarySubscriber
+    ChannelAllocationPolicy : BaseInformation_ChannelAllocationPolicy
+    RingbackSupported : BaseInformation_RingbackSupported
+    CallingNumberRequired : BaseInformation_CallingNumberRequired
+    OverrideCallingNumberVerification : BaseInformation_OverrideCallingNumberVerification
+    Trusted : BaseInformation_Trusted
+    ReceiveGain : BaseInformation_ReceiveGain
+    TransmitGain : BaseInformation_TransmitGain
+    NumberOfReferencingSubscribers : BaseInformation_NumberOfReferencingSubscribers
+    DeactivationMode : BaseInformation_DeactivationMode
+    BChannelRestartState : BaseInformation_BChannelRestartState
+    RestrictRedirectingNumbers : BaseInformation_RestrictRedirectingNumbers
+
+  Meta_ISDNPRI_TwoB-ChannelTransfer
+    TwoBChannelTransferIncomingTBCTRequestsAllowed : TwoBChannelTransfer_IncomingTBCTRequestsAllowed
+    TwoBChannelTransferSendTBCTNotificationToController : TwoBChannelTransfer_SendTBCTNotificationToController
+    TwoBChannelTransferOutgoingTBCTRequestsAllowed : TwoBChannelTransfer_OutgoingTBCTRequestsAllowed
+    TwoBChannelTransferOutgoingTBCTRequestGroupID : TwoBChannelTransfer_OutgoingTBCTRequestGroupID
+
+  Meta_ISDNPRI_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_ISDNPRI_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_ISDNPRI_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_ISDNPRI_BAFBilling
+    IncomingTerminatingCDRType : BAFBilling_IncomingTerminatingCDRType
+    GenerateAdditionalIncomingCallCDR : BAFBilling_GenerateAdditionalIncomingCallCDR
+    IncomingTandemCDRType : BAFBilling_IncomingTandemCDRType
+    OutgoingOriginatingCDRType : BAFBilling_OutgoingOriginatingCDRType
+    OutgoingTandemCDRType : BAFBilling_OutgoingTandemCDRType
+
+  Meta_ISDNPRI_BAFCNABillingForIncomingCalls
+    BAFCNABillingIncomingCallsCIC : BAFCNABillingForIncomingCalls_BAFCNABillingIncomingCallsCIC
+    BAFCNABillingIncomingCallsCNABillingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__ABillingNumber
+    BAFCNABillingIncomingCallsIncludeCallingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__eCallingNumber
+
+  Meta_ISDNPRI_XMLBilling
+    TrunkAccountingReference : XMLBilling_TrunkAccountingReference
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+
+
+Meta_ISDNPRI_DS1
+----------------
+  Meta_ISDNPRI_DS1List
+    DS1Identifier : DS1Identifier
+    Description : Description
+    TDMPort : TDMPort
+    TDMPortType : TDMPortType
+    ExcludedTimeslots : ExcludedTimeslots
+    PBXCapacityGroupsTimeslot1 : PBXCapacityGroupsTimeslot1
+    PBXCapacityGroupsTimeslot2 : PBXCapacityGroupsTimeslot2
+    PBXCapacityGroupsTimeslot3 : PBXCapacityGroupsTimeslot3
+    PBXCapacityGroupsTimeslot4 : PBXCapacityGroupsTimeslot4
+    PBXCapacityGroupsTimeslot5 : PBXCapacityGroupsTimeslot5
+    PBXCapacityGroupsTimeslot6 : PBXCapacityGroupsTimeslot6
+    PBXCapacityGroupsTimeslot7 : PBXCapacityGroupsTimeslot7
+    PBXCapacityGroupsTimeslot8 : PBXCapacityGroupsTimeslot8
+    PBXCapacityGroupsTimeslot9 : PBXCapacityGroupsTimeslot9
+    PBXCapacityGroupsTimeslot10 : PBXCapacityGroupsTimeslot10
+    PBXCapacityGroupsTimeslot11 : PBXCapacityGroupsTimeslot11
+    PBXCapacityGroupsTimeslot12 : PBXCapacityGroupsTimeslot12
+    PBXCapacityGroupsTimeslot13 : PBXCapacityGroupsTimeslot13
+    PBXCapacityGroupsTimeslot14 : PBXCapacityGroupsTimeslot14
+    PBXCapacityGroupsTimeslot15 : PBXCapacityGroupsTimeslot15
+    PBXCapacityGroupsTimeslot16 : PBXCapacityGroupsTimeslot16
+    PBXCapacityGroupsTimeslot17 : PBXCapacityGroupsTimeslot17
+    PBXCapacityGroupsTimeslot18 : PBXCapacityGroupsTimeslot18
+    PBXCapacityGroupsTimeslot19 : PBXCapacityGroupsTimeslot19
+    PBXCapacityGroupsTimeslot20 : PBXCapacityGroupsTimeslot20
+    PBXCapacityGroupsTimeslot21 : PBXCapacityGroupsTimeslot21
+    PBXCapacityGroupsTimeslot22 : PBXCapacityGroupsTimeslot22
+    PBXCapacityGroupsTimeslot23 : PBXCapacityGroupsTimeslot23
+    PBXCapacityGroupsTimeslot24 : PBXCapacityGroupsTimeslot24
+    PBXCapacityGroupsTimeslot25 : PBXCapacityGroupsTimeslot25
+    PBXCapacityGroupsTimeslot26 : PBXCapacityGroupsTimeslot26
+    PBXCapacityGroupsTimeslot27 : PBXCapacityGroupsTimeslot27
+    PBXCapacityGroupsTimeslot28 : PBXCapacityGroupsTimeslot28
+    PBXCapacityGroupsTimeslot29 : PBXCapacityGroupsTimeslot29
+    PBXCapacityGroupsTimeslot30 : PBXCapacityGroupsTimeslot30
+    PBXCapacityGroupsTimeslot31 : PBXCapacityGroupsTimeslot31
+    MediaState : MediaState
+    DeactivationMode : DeactivationMode
+    RequestedStatus : RequestedStatus
+    TDMPort : TDMPortGateway
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    PRIDescription (IDENTIFIER)
+    DS1Index (INDEX)
+
+
+Meta_ISUPCircuitGroup
+---------------------
+  Meta_ISUPCircuitGroup_BaseInformation
+    CircuitGroupIndex : BaseInformation_CircuitGroupIndex
+    Description : BaseInformation_Description
+    MediaChannel : BaseInformation_MediaChannel
+    BaseCircuit : BaseInformation_BaseCircuit
+    TDMPort : BaseInformation_TDMPort
+    BaseTimeslot : BaseInformation_BaseTimeslot
+    NumberOfCircuits : BaseInformation_NumberOfCircuits
+    TrunkType : BaseInformation_TrunkType
+    MaintenanceBlockAllCircuits : BaseInformation_MaintenanceBlockAllCircuits
+    RequestedCircuitsToMaintenanceBlock : BaseInformation_RequestedCircuitsToMaintenanceBlock
+    CircuitsDeniedToISUP : BaseInformation_CircuitsDeniedToISUP
+    TesterSendToneForContinuityTesting : BaseInformation_TesterSendToneForContinuityTesting
+    TesterReceiveToneForContinuityTesting : BaseInformation_TesterReceiveToneForContinuityTesting
+    LoopbackReceiveToneForContinuityTesting : BaseInformation_LoopbackReceiveToneForContinuityTesting
+    LoopbackSendToneForContinuityTesting : BaseInformation_LoopbackSendToneForContinuityTesting
+    OutgoingCallsPerContinuityCheck : BaseInformation_OutgoingCallsPerContinuityCheck
+    DeactivationMode : BaseInformation_DeactivationMode
+
+  Meta_ISUPCircuitGroup_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    LocalSignalingDestinationName (IDENTIFIER)
+    pointcode (IDENTIFIER)
+    RemoteSignalingDestinationPointCode (IDENTIFIER)
+
+
+Meta_ISUPMediaChannel
+---------------------
+  Meta_ISUPMediaChannel_BaseInformation
+    MediaChannelIndex : BaseInformation_MediaChannelIndex
+    Description : BaseInformation_Description
+    TrunkGroupNumber : BaseInformation_TrunkGroupNumber
+    STIRSHAKENAttestationLevel : BaseInformation_STIRSHAKENAttestationLevel
+    AllocationPolicy : BaseInformation_AllocationPolicy
+    GuardTimerDuration : BaseInformation_GuardTimerDuration
+    DualSeizurePolicy : BaseInformation_DualSeizurePolicy
+    EchoCancellation : BaseInformation_EchoCancellation
+    SupportedCallDirections : BaseInformation_SupportedCallDirections
+    DisallowSignalingForLRN : BaseInformation_DisallowSignalingForLRN
+    RecordIncomingCDRs : BaseInformation_RecordIncomingCDRs
+    RecordOutgoingCDRs : BaseInformation_RecordOutgoingCDRs
+    AppendOriginatingLRNModule : BaseInformation_AppendOriginatingLRNModule
+    ConnectedSwitchLRN : BaseInformation_ConnectedSwitchLRN
+    OverrideSignalledLRN : BaseInformation_OverrideSignalledLRN
+    GenerateIncomingCallCNABillingRecords : BaseInformation_GenerateIncomingCallCNABillingRecords
+    CICForCNABilling : BaseInformation_CICForCNABilling
+    IncludeCNABillingNumber : BaseInformation_IncludeCNABillingNumber
+    BillingNumberForCNABilling : BaseInformation_BillingNumberForCNABilling
+    IncludeChargeNumber : BaseInformation_IncludeChargeNumber
+    IncludeCallingNumber : BaseInformation_IncludeCallingNumber
+    UseISUPCalledAddressPrefixInformation : BaseInformation_UseISUPCalledAddressPrefixInformation
+    ReceiveGain : BaseInformation_ReceiveGain
+    TransmitGain : BaseInformation_TransmitGain
+    RLTSupported : BaseInformation_RLTSupported
+    TrunkRoleCliAbnp : BaseInformation_TrunkRoleCliAbnp
+    AbnpValue : BaseInformation_AbnpValue
+    OverrideLocalCLLICode : BaseInformation_OverrideLocalCLLICode
+    LocalCLLICodeOverrideValue : BaseInformation_LocalCLLICodeOverrideValue
+    OverrideRemoteCLLICode : BaseInformation_OverrideRemoteCLLICode
+    RemoteCLLICodeOverrideValue : BaseInformation_RemoteCLLICodeOverrideValue
+
+  Meta_ISUPMediaChannel_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_ISUPMediaChannel_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_ISUPMediaChannel_BAFBilling
+    IncomingTerminatingCDRType : BAFBilling_IncomingTerminatingCDRType
+    GenerateAdditionalIncomingCallCDR : BAFBilling_GenerateAdditionalIncomingCallCDR
+    IncomingTandemCDRType : BAFBilling_IncomingTandemCDRType
+    OutgoingOriginatingCDRType : BAFBilling_OutgoingOriginatingCDRType
+    OutgoingTandemCDRType : BAFBilling_OutgoingTandemCDRType
+    AppendOriginatingLRNModule : BAFBilling_AppendOriginatingLRNModule
+    ConnectedSwitchLRN : BAFBilling_ConnectedSwitchLRN
+    OverrideSignalledLRN : BAFBilling_OverrideSignalledLRN
+
+  Meta_ISUPMediaChannel_BAFCNABillingForIncomingCalls
+    BAFCNABillingIncomingCallsCIC : BAFCNABillingForIncomingCalls_BAFCNABillingIncomingCallsCIC
+    BAFCNABillingIncomingCallsIncludeCNABillingNum : BAFCNABillingForIncomingCalls_BAFCNABillingInco__eCNABillingNum
+    BAFCNABillingIncomingCallsCNABillingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__ABillingNumber
+    BAFCNABillingIncomingCallsIncludeChargeNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__deChargeNumber
+    BAFCNABillingIncomingCallsIncludeCallingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__eCallingNumber
+
+  Meta_ISUPMediaChannel_XMLBilling
+    TrunkAccountingReference : XMLBilling_TrunkAccountingReference
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    LocalSignalingDestinationName (IDENTIFIER)
+    pointcode (IDENTIFIER)
+    RemoteSignalingDestinationPointCode (IDENTIFIER)
+
+
+Meta_ManagedDevice
+------------------
+  Meta_ManagedDevice_BaseInformation
+    MACAddress : BaseInformation_MACAddress
+    FormattedMACAddress : BaseInformation_FormattedMACAddress
+    Description : BaseInformation_Description
+    DeviceVersion : BaseInformation_DeviceVersion
+    DeviceModel : BaseInformation_DeviceModel
+    ExpansionModule1Model : BaseInformation_ExpansionModule1Model
+    ExpansionModule2Model : BaseInformation_ExpansionModule2Model
+    ExpansionModule3Model : BaseInformation_ExpansionModule3Model
+    AssignedToUser : BaseInformation_AssignedToUser
+    UserDirectoryNumber : BaseInformation_UserDirectoryNumber
+    MACTrustedUntil : BaseInformation_MACTrustedUntil
+    TimeOfAuthentication : BaseInformation_TimeOfAuthentication
+    DelegatedManagementGroup : BaseInformation_DelegatedManagementGroup
+    Department : BaseInformation_Department
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    DirectoryNumber (IDENTIFIER)
+
+
+Meta_MFCircuitGroup
+-------------------
+  Meta_MFCircuitGroup_BaseInformation
+    CircuitGroupIndex : BaseInformation_CircuitGroupIndex
+    Description : BaseInformation_Description
+    CircuitType : BaseInformation_CircuitType
+    MediaChannel : BaseInformation_MediaChannel
+    TDMPort : BaseInformation_TDMPort
+    BaseTimeslot : BaseInformation_BaseTimeslot
+    NumberOfCircuits : BaseInformation_NumberOfCircuits
+    DualSeizurePolicy : BaseInformation_DualSeizurePolicy
+
+  Meta_MFCircuitGroup_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_MFCircuitGroup_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    RemoteExchangeIndex (IDENTIFIER)
+
+
+Meta_MFMediaChannel
+-------------------
+  Meta_MFMediaChannel_BaseInformation
+    MediaChannelIndex : BaseInformation_MediaChannelIndex
+    Description : BaseInformation_Description
+    TrunkGroupNumber : BaseInformation_TrunkGroupNumber
+    STIRSHAKENAttestationLevel : BaseInformation_STIRSHAKENAttestationLevel
+    EchoCancellation : BaseInformation_EchoCancellation
+    MediaAllocationPolicy : BaseInformation_MediaAllocationPolicy
+    DirectIXCConnection : BaseInformation_DirectIXCConnection
+    ReceiveGain : BaseInformation_ReceiveGain
+    TransmitGain : BaseInformation_TransmitGain
+
+  Meta_MFMediaChannel_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_MFMediaChannel_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_MFMediaChannel_BAFBilling
+    RecordIncomingCDRs : BAFBilling_RecordIncomingCDRs
+    RecordOutgoingCDRs : BAFBilling_RecordOutgoingCDRs
+    IncomingTerminatingCDRType : BAFBilling_IncomingTerminatingCDRType
+    GenerateAdditionalIncomingCallCDR : BAFBilling_GenerateAdditionalIncomingCallCDR
+    IncomingTandemCDRType : BAFBilling_IncomingTandemCDRType
+    OutgoingOriginatingCDRType : BAFBilling_OutgoingOriginatingCDRType
+    OutgoingTandemCDRType : BAFBilling_OutgoingTandemCDRType
+    ConnectedSwitchLRN : BAFBilling_ConnectedSwitchLRN
+    ConnectedSwitchNPA : BAFBilling_ConnectedSwitchNPA
+    CNABillingIncCallsGenerateCNABillingRecords : BAFBilling_CNABillingIncCallsGenerateCNABillingRecords
+    BAFCNABillingIncomingCallsCIC : BAFBilling_BAFCNABillingIncomingCallsCIC
+    BAFCNABillingIncomingCallsCNABillingNumber : BAFBilling_BAFCNABillingIncomingCallsCNABillingNumber
+    BAFCNABillingIncomingCallsAppendANI : BAFBilling_BAFCNABillingIncomingCallsAppendANI
+
+  Meta_MFMediaChannel_BAFCNABillingForIncomingCalls
+    BAFCNABillingIncomingCallsCIC : BAFCNABillingForIncomingCalls_BAFCNABillingIncomingCallsCIC
+    BAFCNABillingIncomingCallsCNABillingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__ABillingNumber
+    BAFCNABillingIncomingCallsAppendANI : BAFCNABillingForIncomingCalls_BAFCNABillingInco__CallsAppendANI
+
+  Meta_MFMediaChannel_XMLBilling
+    TrunkAccountingReference : XMLBilling_TrunkAccountingReference
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    RemoteExchangeIndex (IDENTIFIER)
+
+
+Meta_MFRemoteExchange
+---------------------
+  Meta_MFRemoteExchange_BaseInformation
+    RemoteExchangeIndex : BaseInformation_RemoteExchangeIndex
+    Name : BaseInformation_Name
+    NetworkNumber : BaseInformation_NetworkNumber
+    STIRSHAKENOriginationID : BaseInformation_STIRSHAKENOriginationID
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+
+
+Meta_MLHG
+---------
+  Meta_MLHG_BaseInformation
+    Name : BaseInformation_Name
+    ServiceLevel : BaseInformation_ServiceLevel
+    Department : BaseInformation_Department
+    Number : BaseInformation_Number
+    LoginLogoutSupportedByDefault : BaseInformation_LoginLogoutSupportedByDefault
+    DistributionAlgorithm : BaseInformation_DistributionAlgorithm
+    QueuingSupported : BaseInformation_QueuingSupported
+    MaximumQueueLength : BaseInformation_MaximumQueueLength
+    LimitQueuingTime : BaseInformation_LimitQueuingTime
+    HuntOnNoAnswer : BaseInformation_HuntOnNoAnswer
+    NoAnswerTimeout : BaseInformation_NoAnswerTimeout
+    NoAnswerExclusionTime : BaseInformation_NoAnswerExclusionTime
+    MaximumQueueTimeout : BaseInformation_MaximumQueueTimeout
+    HuntOnDirectDialedCalls : BaseInformation_HuntOnDirectDialedCalls
+    QueueStatusAnnouncementEnabled : BaseInformation_QueueStatusAnnouncementEnabled
+    QueueStatusAnnouncementDelay : BaseInformation_QueueStatusAnnouncementDelay
+    QueueStatusAnnouncementInterval : BaseInformation_QueueStatusAnnouncementInterval
+    QueueStatusAnnouncementFormat : BaseInformation_QueueStatusAnnouncementFormat
+    OfferCallsToSIPLinesInCallsWithSpareMCAs : BaseInformation_OfferCallsToSIPLinesInCallsWithSpareMCAs
+    UnavailableCallForwardingSupported : BaseInformation_UnavailableCallForwardingSupported
+    DeliveryOfCalledDNAsCallerID : BaseInformation_DeliveryOfCalledDNAsCallerID
+    TrafficStudy : BaseInformation_TrafficStudy
+    AllowExternalMembers : BaseInformation_AllowExternalMembers
+    SetHighDiversionCountForExternalMembers : BaseInformation_SetHighDiversionCountForExternalMembers
+
+  Meta_MLHG_AutomatedCallDistribution
+    WrapUpEnabled : AutomatedCallDistribution_WrapUpEnabled
+    MaximumWrapUpTime : AutomatedCallDistribution_MaximumWrapUpTime
+    DispositionCodesRequired : AutomatedCallDistribution_DispositionCodesRequired
+    DispositionCode1 : AutomatedCallDistribution_DispositionCode1
+    DispositionCode2 : AutomatedCallDistribution_DispositionCode2
+    DispositionCode3 : AutomatedCallDistribution_DispositionCode3
+    DispositionCode4 : AutomatedCallDistribution_DispositionCode4
+    DispositionCode5 : AutomatedCallDistribution_DispositionCode5
+    DispositionCode6 : AutomatedCallDistribution_DispositionCode6
+    DispositionCode7 : AutomatedCallDistribution_DispositionCode7
+    DispositionCode8 : AutomatedCallDistribution_DispositionCode8
+    DispositionCode9 : AutomatedCallDistribution_DispositionCode9
+    DispositionCode10 : AutomatedCallDistribution_DispositionCode10
+    DispositionCode11 : AutomatedCallDistribution_DispositionCode11
+    DispositionCode12 : AutomatedCallDistribution_DispositionCode12
+    DispositionCode13 : AutomatedCallDistribution_DispositionCode13
+    DispositionCode14 : AutomatedCallDistribution_DispositionCode14
+    DispositionCode15 : AutomatedCallDistribution_DispositionCode15
+    DispositionCode16 : AutomatedCallDistribution_DispositionCode16
+    DispositionCode17 : AutomatedCallDistribution_DispositionCode17
+    DispositionCode18 : AutomatedCallDistribution_DispositionCode18
+    DispositionCode19 : AutomatedCallDistribution_DispositionCode19
+    DispositionCode20 : AutomatedCallDistribution_DispositionCode20
+    DispositionCode21 : AutomatedCallDistribution_DispositionCode21
+    DispositionCode22 : AutomatedCallDistribution_DispositionCode22
+    DispositionCode23 : AutomatedCallDistribution_DispositionCode23
+    DispositionCode24 : AutomatedCallDistribution_DispositionCode24
+    DispositionCode25 : AutomatedCallDistribution_DispositionCode25
+    DispositionCode26 : AutomatedCallDistribution_DispositionCode26
+    DispositionCode27 : AutomatedCallDistribution_DispositionCode27
+    DispositionCode28 : AutomatedCallDistribution_DispositionCode28
+    DispositionCode29 : AutomatedCallDistribution_DispositionCode29
+    DispositionCode30 : AutomatedCallDistribution_DispositionCode30
+
+  Meta_MLHG_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+    APITraceRemoteNumber : Diagnostics_APITraceRemoteNumber
+
+  Meta_MLHG_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    MLHGGroupIndex (INDEX)
+
+
+Meta_NumberRange
+----------------
+  Meta_NumberRange_BaseInformation
+    FirstNumber : BaseInformation_FirstNumber
+    LastNumber : BaseInformation_LastNumber
+    Description : BaseInformation_Description
+    OwningSite : BaseInformation_OwningSite
+    PreferredSite : BaseInformation_PreferredSite
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+
+
+Meta_NumberRange_DMGRange
+-------------------------
+  Meta_NumberRange_DMGRangeList
+    DelegatedManagementGroup : DelegatedManagementGroup
+    DMGNumberRangeFirstNumber : DMGNumberRangeFirstNumber
+    DMGNumberRangeLastNumber : DMGNumberRangeLastNumber
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    FirstNumber (IDENTIFIER)
+
+
+Meta_PBX_DirectInwardCalling
+----------------------------
+  Meta_PBX_DirectInwardCalling
+    Type : _Type
+    Description : Description
+    RangeSize : RangeSize
+    FirstDirectoryNumber : FirstDirectoryNumber
+    LastDirectoryNumber : LastDirectoryNumber
+    FirstCode : FirstCode
+    LastCode : LastCode
+    LimitIncomingCalls : LimitIncomingCalls
+    MaximumIncomingCalls : MaximumIncomingCalls
+    NumberStatus : NumberStatus
+    ConnectCallAfterAnnouncement : ConnectCallAfterAnnouncement
+    MovedToDirectoryNumber : MovedToDirectoryNumber
+    PortedExchangeID : PortedExchangeID
+    ForceLNPLookup : ForceLNPLookup
+    DeleteAction : DeleteAction
+    PBXCapacityGroup : PBXCapacityGroup
+    TwinnedStatus : TwinnedStatus
+    CreateTwinnedBGNumberBlock : CreateTwinnedBGNumberBlock
+    RequestedStatus : RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    DirectoryNumber (IDENTIFIER)
+
+
+Meta_PBX_Line
+-------------
+  Meta_PBX_LinesList
+    TerminalIndex : TerminalIndex
+    Name : _Name
+    SignalingType : SignalingType
+    ConfiguredSIPBinding : ConfiguredSIPBinding
+    PBXLineUsage : PBXLineUsage
+    AccessDevice : AccessDevice
+    AccessLineNumber : AccessLineNumber
+    ISDNInterface : ISDNInterface
+    ISDNDefaultBearerCapabilities : ISDNDefaultBearerCapabilities
+    MaximumCallAppearances : MaximumCallAppearances
+    CallBurstThreshold : CallBurstThreshold
+    SignalFunctionCode : SignalFunctionCode
+    LineUsage : LineUsage
+    GR303NailedUpConnection : GR303NailedUpConnection
+    PreSubscribedConnection : PreSubscribedConnection
+    GR303DialType : GR303DialType
+    FSKFormat : FSKFormat
+    LineSideAnswerSupervisionSupported : LineSideAnswerSupervisionSupported
+    PBXPlaysRingback : PBXPlaysRingback
+    PBXPlaysDialtone : PBXPlaysDialtone
+    LineTrafficStudy : LineTrafficStudy
+    NetworkDisconnectSignalDuration : NetworkDisconnectSignalDuration
+    SelectionGroup : SelectionGroup
+    CallLimitsTotalCallsLimit : CallLimitsTotalCallsLimit
+    CallLimitsMaximumCalls : CallLimitsMaximumCalls
+    CallLimitsTerminatingCallsLimit : CallLimitsTerminatingCallsLimit
+    CallLimitsMaximumTerminatingCalls : CallLimitsMaximumTerminatingCalls
+    CallLimitsOriginatingCallsLimit : CallLimitsOriginatingCallsLimit
+    CallLimitsMaximumOriginatingCalls : CallLimitsMaximumOriginatingCalls
+    DiagnosticsLogLevel : DiagnosticsLogLevel
+    DiagnosticsAPITraceEnabled : DiagnosticsAPITraceEnabled
+    DiagnosticsAPITraceTag : DiagnosticsAPITraceTag
+    DiagnosticsAPITraceRemoteNumber : DiagnosticsAPITraceRemoteNumber
+    StatisticsAlarms : StatisticsAlarms
+    RequestedStatus : RequestedStatus
+    AccessDevice : Gateway
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    DirectoryNumber (IDENTIFIER)
+
+
+Meta_PersistentProfile
+----------------------
+  Meta_PersistentProfile_BaseInformation
+    PersistentProfileName : BaseInformation_PersistentProfileName
+    ValidSubscriberTypes : BaseInformation_ValidSubscriberTypes
+    CallLimitAlgorithm : BaseInformation_CallLimitAlgorithm
+    CallLimitValue : BaseInformation_CallLimitValue
+    FlashHookCallServicesProvidedBy : BaseInformation_FlashHookCallServicesProvidedBy
+    CallingNumberPrecedenceForEmergencyCalls : BaseInformation_CallingNumberPrecedenceForEmergencyCalls
+    CallingNumberConnectedLineIDScreening : BaseInformation_CallingNumberConnectedLineIDScreening
+    ActionOnFailedCallingNumberScreening : BaseInformation_ActionOnFailedCallingNumberScreening
+    AdditionalCallingNumberScreeningForEmergencyCalls : BaseInformation_AdditionalCallingNumberSc__EmergencyCalls
+    AuthenticationUsernameIncludesDomain : BaseInformation_AuthenticationUsernameIncludesDomain
+    MaximumSimultaneousRegistrations : BaseInformation_MaximumSimultaneousRegistrations
+    AccessionClientOnly : BaseInformation_AccessionClientOnly
+    SubMediaGatewayModel : BaseInformation_SubMediaGatewayModel
+    MaximumCallAppearances : BaseInformation_MaximumCallAppearances
+    TypeOfAdditionalCallAppearances : BaseInformation_TypeOfAdditionalCallAppearances
+    MaximumPermittedContactRefreshInterval : BaseInformation_MaximumPermittedContactRefreshInterval
+    LongDistanceCarrier : BaseInformation_LongDistanceCarrier
+    IntraLATACarrier : BaseInformation_IntraLATACarrier
+    InternationalCarrier : BaseInformation_InternationalCarrier
+    OutOfArea : BaseInformation_OutOfArea
+    BillingType : BaseInformation_BillingType
+    AdviceOfChargeAOCD : BaseInformation_AdviceOfChargeAOCD
+    AdviceOfChargeAOCE : BaseInformation_AdviceOfChargeAOCE
+    RoutingAttributes : BaseInformation_RoutingAttributes
+    BusinessGroupForcedOffSwitchRouting : BaseInformation_BusinessGroupForcedOffSwitchRouting
+    DenyAllUsageSensitiveFeatures : BaseInformation_DenyAllUsageSensitiveFeatures
+    TariffGroup : BaseInformation_TariffGroup
+    ForceLNPLookup : BaseInformation_ForceLNPLookup
+    Timezone : BaseInformation_Timezone
+    AdjustForDaylightSavings : BaseInformation_AdjustForDaylightSavings
+    SubscriberTimezone : BaseInformation_SubscriberTimezone
+    LineTimezone : BaseInformation_LineTimezone
+    BusinessGroupCallLogsEnabled : BaseInformation_BusinessGroupCallLogsEnabled
+    AllowBGAdminChangeExpMod : BaseInformation_AllowBGAdminChangeExpMod
+    BusinessGroupPrefixCallerIDWithExternalLineCodeIfPresent : BaseInformation_BusinessGroupPrefixCaller__eCodeIfPresent
+    BusinessGroupLinesSharePresence : BaseInformation_BusinessGroupLinesSharePresence
+    ChargeIndication : BaseInformation_ChargeIndication
+    SubscriberCallingCategory : BaseInformation_SubscriberCallingCategory
+    NetworkDisconnectSignalDuration : BaseInformation_NetworkDisconnectSignalDuration
+    InterruptMOHToProvideRingback : BaseInformation_InterruptMOHToProvideRingback
+    TreatBGMembersCallsWithFullDNAsIntraBG : BaseInformation_TreatBGMembersCallsWithFullDNAsIntraBG
+    HasDMGChildren : BaseInformation_HasDMGChildren
+
+  Meta_PersistentProfile_LineClassCodes
+    LineClassCode1 : LineClassCodes_LineClassCode1
+    LineClassCode2 : LineClassCodes_LineClassCode2
+    LineClassCode3 : LineClassCodes_LineClassCode3
+    LineClassCode4 : LineClassCodes_LineClassCode4
+    LineClassCode5 : LineClassCodes_LineClassCode5
+    LineClassCode6 : LineClassCodes_LineClassCode6
+    LineClassCode7 : LineClassCodes_LineClassCode7
+    LineClassCode8 : LineClassCodes_LineClassCode8
+    LineClassCode9 : LineClassCodes_LineClassCode9
+    LineClassCode10 : LineClassCodes_LineClassCode10
+    LineClassCode11 : LineClassCodes_LineClassCode11
+    LineClassCode12 : LineClassCodes_LineClassCode12
+    LineClassCode13 : LineClassCodes_LineClassCode13
+    LineClassCode14 : LineClassCodes_LineClassCode14
+    LineClassCode15 : LineClassCodes_LineClassCode15
+    LineClassCode16 : LineClassCodes_LineClassCode16
+    LineClassCode17 : LineClassCodes_LineClassCode17
+    LineClassCode18 : LineClassCodes_LineClassCode18
+    LineClassCode19 : LineClassCodes_LineClassCode19
+    LineClassCode20 : LineClassCodes_LineClassCode20
+
+  Meta_PersistentProfile_PINChange
+    Subscribed : PINChange_Subscribed
+
+  Meta_PersistentProfile_CallListsService
+    Subscribed : CallListsService_Subscribed
+    MaximumNumberOfCallsPerList : CallListsService_MaximumNumberOfCallsPerList
+
+  Meta_PersistentProfile_AdvancedVoiceCodecs
+    Subscribed : AdvancedVoiceCodecs_Subscribed
+
+  Meta_PersistentProfile_VideoCodecs
+    Subscribed : VideoCodecs_Subscribed
+
+  Meta_PersistentProfile_HighRiskCallLimits
+    SubscriberLimitType : HighRiskCallLimits_SubscriberLimitType
+    SubscriberMaximumHighRiskCalls : HighRiskCallLimits_SubscriberMaximumHighRiskCalls
+    PBXLimitType : HighRiskCallLimits_PBXLimitType
+    PBXMaximumHighRiskCalls : HighRiskCallLimits_PBXMaximumHighRiskCalls
+
+  Meta_PersistentProfile_RedirectedCallLimits
+    Subscribed : RedirectedCallLimits_Subscribed
+    MaxSimultaneousRedirCalls : RedirectedCallLimits_MaxSimultaneousRedirCalls
+
+  Meta_PersistentProfile_OutgoingCallNotifications
+    Subscribed : OutgoingCallNotifications_Subscribed
+    ApplicationServer : OutgoingCallNotifications_ApplicationServer
+    CallTypes : OutgoingCallNotifications_CallTypes
+
+  Meta_PersistentProfile_OriginatingService
+    Subscribed : OriginatingService_Subscribed
+    Server : OriginatingService_Server
+
+  Meta_PersistentProfile_TerminatingService
+    Subscribed : TerminatingService_Subscribed
+    Server : TerminatingService_Server
+
+  Meta_PersistentProfile_RecordingService
+    Subscribed : RecordingService_Subscribed
+    Enabled : RecordingService_Enabled
+    Server : RecordingService_Server
+
+  Meta_PersistentProfile_CallForwardingServices
+    MaximumSimultaneousForwardings : CallForwardingServices_MaximumSimultaneousForwardings
+    UserNotificationOfCallDiversion : CallForwardingServices_UserNotificationOfCallDiversion
+    DeliverRedirectingNumberAsCallingNumber : CallForwardingServices_DeliverRedirecting__sCallingNumber
+    NumberReleasedToDivertedToUser : CallForwardingServices_NumberReleasedToDivertedToUser
+    NumberReleasedToCaller : CallForwardingServices_NumberReleasedToCaller
+    DivertedToNumberReleasedToCaller : CallForwardingServices_DivertedToNumberReleasedToCaller
+    RequireCourtesyCall : CallForwardingServices_RequireCourtesyCall
+    PlayConfirmTone : CallForwardingServices_PlayConfirmTone
+    IntegratedCallForwarding : CallForwardingServices_IntegratedCallForwarding
+
+  Meta_PersistentProfile_UnconditionalCallForwarding
+    Subscribed : UnconditionalCallForwarding_Subscribed
+    Variant : UnconditionalCallForwarding_Variant
+    SingleRing : UnconditionalCallForwarding_SingleRing
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : UnconditionalCallForwarding_Unconditional__nsitiveBilling
+
+  Meta_PersistentProfile_BusyCallForwarding
+    Subscribed : BusyCallForwarding_Subscribed
+    Variant : BusyCallForwarding_Variant
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : BusyCallForwarding_UnconditionalBusyAndDe__nsitiveBilling
+
+  Meta_PersistentProfile_DelayedCallForwarding
+    Subscribed : DelayedCallForwarding_Subscribed
+    Variant : DelayedCallForwarding_Variant
+    NoReplyTime : DelayedCallForwarding_NoReplyTime
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : DelayedCallForwarding_UnconditionalBusyAn__nsitiveBilling
+
+  Meta_PersistentProfile_UnavailableCallForwarding
+    Subscribed : UnavailableCallForwarding_Subscribed
+
+  Meta_PersistentProfile_SelectiveCallForwarding
+    Subscribed : SelectiveCallForwarding_Subscribed
+    SingleRing : SelectiveCallForwarding_SingleRing
+    UsageSensitiveBilling : SelectiveCallForwarding_UsageSensitiveBilling
+
+  Meta_PersistentProfile_LineHunting
+    Subscribed : LineHunting_Subscribed
+    NoReplyTime : LineHunting_NoReplyTime
+    Arrangement : LineHunting_Arrangement
+
+  Meta_PersistentProfile_BasicLineHunting
+    Subscribed : BasicLineHunting_Subscribed
+    NoReplyTime : BasicLineHunting_NoReplyTime
+    Arrangement : BasicLineHunting_Arrangement
+
+  Meta_PersistentProfile_Find-me-follow-me
+    Subscribed : FindMeFollowMe_Subscribed
+    ServiceLevel : FindMeFollowMe_ServiceLevel
+
+  Meta_PersistentProfile_RemoteAccessToCallForwarding
+    Subscribed : RemoteAccessToCallForwarding_Subscribed
+
+  Meta_PersistentProfile_DirectedPickupNoBarge-in
+    DirectedPickupNoBargeInSubscribed : DirectedPickupNoBargeIn_Subscribed
+
+  Meta_PersistentProfile_AutomaticRecall
+    Subscribed : AutomaticRecall_Subscribed
+    UsageSensitiveBilling : AutomaticRecall_UsageSensitiveBilling
+
+  Meta_PersistentProfile_AutomaticCallback
+    Subscribed : AutomaticCallback_Subscribed
+    UsageSensitiveBilling : AutomaticCallback_UsageSensitiveBilling
+
+  Meta_PersistentProfile_CallTrace
+    Subscribed : CallTrace_Subscribed
+    UsageSensitiveBilling : CallTrace_UsageSensitiveBilling
+
+  Meta_PersistentProfile_CallingNumberDelivery
+    Subscribed : CallingNumberDelivery_Subscribed
+    UsageSensitiveBilling : CallingNumberDelivery_UsageSensitiveBilling
+    PreferredSIPFormat : CallingNumberDelivery_PreferredSIPFormat
+    OverridePrivacySettingOfCallingSubscriber : CallingNumberDelivery_OverridePrivacySett__lingSubscriber
+
+  Meta_PersistentProfile_CallerIDPresentation
+    Subscribed : CallerIDPresentation_Subscribed
+    WithholdNumberByDefault : CallerIDPresentation_WithholdNumberByDefault
+    NumberWithholdRejectionReason : CallerIDPresentation_NumberWithholdRejectionReason
+    PresentNumberByDefault : CallerIDPresentation_PresentNumberByDefault
+    WithholdDirectoryNumber : CallerIDPresentation_WithholdDirectoryNumber
+    CIDIgnorePBXSigPrsnt : CallerIDPresentation_CIDIgnorePBXSigPrsnt
+    CIDUsePBXSigPrsnt : CallerIDPresentation_CIDUsePBXSigPrsnt
+    AlwaysPresentNumberForIntraBGCalls : CallerIDPresentation_AlwaysPresentNumberForIntraBGCalls
+
+  Meta_PersistentProfile_CallingNumberDeliveryBlocking
+    Subscribed : CallingNumberDeliveryBlocking_Subscribed
+    UsageSensitiveBilling : CallingNumberDeliveryBlocking_UsageSensitiveBilling
+
+  Meta_PersistentProfile_CallingNameDelivery
+    Subscribed : CallingNameDelivery_Subscribed
+    UseLocalNameForIntraBGCallsOnly : CallingNameDelivery_UseLocalNameForIntraBGCallsOnly
+    UsageSensitiveBilling : CallingNameDelivery_UsageSensitiveBilling
+
+  Meta_PersistentProfile_CallingNameAndNumberDeliveryOverIP
+    Subscribed : CallingNameAndNumberDeliveryOverIP_Subscribed
+    Destination : CallingNameAndNumberDeliveryOverIP_Destination
+
+  Meta_PersistentProfile_LastCallerIDErasure
+    Subscribed : LastCallerIDErasure_Subscribed
+
+  Meta_PersistentProfile_ConnectedNumberDelivery
+    SubsCallerIdConnectedNumberDeliverySubscribed : ConnectedNumberDelivery_SubsCallerIdConne__verySubscribed
+    OverridePrivacySettingOfConnectedSubscriber : ConnectedNumberDelivery_OverridePrivacySe__ctedSubscriber
+
+  Meta_PersistentProfile_ConnectedLineIDPresentation
+    SubsCIDConnectedLineIDPresentationSubscribed : ConnectedLineIDPresentation_SubsCIDConnec__tionSubscribed
+    SubsCIDConnLineIDPresentWithholdNumber : ConnectedLineIDPresentation_SubsCIDConnLi__WithholdNumber
+    SubsCIDConnLineIDPresentationPresentNumber : ConnectedLineIDPresentation_SubsCIDConnLi__nPresentNumber
+    SubsCIDConnectedLineIDPresentationIgnore : ConnectedLineIDPresentation_SubsCIDConnec__entationIgnore
+
+  Meta_PersistentProfile_DialedNameDelivery
+    Subscribed : DialedNameDelivery_Subscribed
+    Enabled : DialedNameDelivery_Enabled
+
+  Meta_PersistentProfile_SelectiveCallRejection
+    Subscribed : SelectiveCallRejection_Subscribed
+    UsageSensitiveBilling : SelectiveCallRejection_UsageSensitiveBilling
+
+  Meta_PersistentProfile_AnonymousCallRejection
+    Subscribed : AnonymousCallRejection_Subscribed
+    UsageSensitiveBilling : AnonymousCallRejection_UsageSensitiveBilling
+
+  Meta_PersistentProfile_DoNotDisturb
+    Subscribed : DoNotDisturb_Subscribed
+    ServiceLevel : DoNotDisturb_ServiceLevel
+    SingleRing : DoNotDisturb_SingleRing
+    IntegratedDND : DoNotDisturb_IntegratedDND
+    SelectiveCallAcceptanceUsageSensitiveBilling : DoNotDisturb_SelectiveCallAcceptanceUsageSensitiveBilling
+
+  Meta_PersistentProfile_PriorityCall
+    Subscribed : PriorityCall_Subscribed
+    UsageSensitiveBilling : PriorityCall_UsageSensitiveBilling
+
+  Meta_PersistentProfile_MultiLineHuntGroups
+    StatisticsEnabled : MultiLineHuntGroups_StatisticsEnabled
+
+  Meta_PersistentProfile_Off-HookDelaySubscriberTrigger
+    Subscribed : OffHookDelaySubscriberTrigger_Subscribed
+    Trigger : OffHookDelaySubscriberTrigger_Trigger
+
+  Meta_PersistentProfile_TerminationAttemptTrigger
+    Subscribed : TerminationAttemptTrigger_Subscribed
+    Trigger : TerminationAttemptTrigger_Trigger
+
+  Meta_PersistentProfile_Voicemail
+    Subscribed : Voicemail_Subscribed
+    CallDeliveryMethod : Voicemail_CallDeliveryMethod
+    VoicemailSystemLineGroup : Voicemail_SystemLineGroup
+    RetrievalNumber : Voicemail_RetrievalNumber
+    IncomingNumber : Voicemail_IncomingNumber
+    ApplicationServer : Voicemail_ApplicationServer
+    IndicatorNotificationMethod : Voicemail_IndicatorNotificationMethod
+    SMDILink : Voicemail_SMDILink
+    AuthorizedIDForIndicatorControl : Voicemail_AuthorizedIDForIndicatorControl
+    IndicatorNotificationApplicationServer : Voicemail_IndicatorNotificationApplicationServer
+    VisualMessageWaitingIndicator : Voicemail_VisualMessageWaitingIndicator
+    AudibleMessageWaitingIndicator : Voicemail_AudibleMessageWaitingIndicator
+    SIPMessageWaitingIndicator : Voicemail_SIPMessageWaitingIndicator
+    CallTransferTime : Voicemail_CallTransferTime
+
+  Meta_PersistentProfile_ReminderCalls
+    Subscribed : ReminderCalls_Subscribed
+    UsageSensitiveBilling : ReminderCalls_UsageSensitiveBilling
+
+  Meta_PersistentProfile_RegularReminderCalls
+    Subscribed : RegularReminderCalls_Subscribed
+
+  Meta_PersistentProfile_CallTransfer
+    Subscribed : CallTransfer_Subscribed
+
+  Meta_PersistentProfile_3-WayCallingCallTransferBilling
+    TWCCTConfUsageSensitiveBilling : _3WayCallingCallTransferBilling_TWCCTConf__nsitiveBilling
+
+  Meta_PersistentProfile_CallHold
+    Subscribed : CallHold_Subscribed
+
+  Meta_PersistentProfile_MusicOnHoldIntegrated
+    Subscribed : MusicOnHoldIntegrated_Subscribed
+
+  Meta_PersistentProfile_AnnouncementOnHold
+    Subscribed : AnnouncementOnHold_Subscribed
+
+  Meta_PersistentProfile_CallWaiting
+    Subscribed : CallWaiting_Subscribed
+
+  Meta_PersistentProfile_CallWaitingWithCallerID
+    Subscribed : CallWaitingWithCallerID_Subscribed
+
+  Meta_PersistentProfile_HomeIntercom
+    Subscribed : HomeIntercom_Subscribed
+    DistinctiveRinging : HomeIntercom_DistinctiveRinging
+
+  Meta_PersistentProfile_LineStateMonitoring
+    Subscribed : LineStateMonitoring_Subscribed
+    MaximumNumberOfLines : LineStateMonitoring_MaximumNumberOfLines
+    MonitorDoNotDisturbStatus : LineStateMonitoring_MonitorDoNotDisturbStatus
+
+  Meta_PersistentProfile_SpeedCalling
+    Subscribed : SpeedCalling_Subscribed
+    AllowedTypes : SpeedCalling_AllowedTypes
+    HandsetAccessAllowed : SpeedCalling_HandsetAccessAllowed
+
+  Meta_PersistentProfile_CallBarring
+    Subscribed : CallBarring_Subscribed
+    UsageSensitiveBilling : CallBarring_UsageSensitiveBilling
+    CurrentSubscriberBarredCallTypes : CallBarring_CurrentSubscriberBarredCallTypes
+    CurrentOperatorBarredCallTypes : CallBarring_CurrentOperatorBarredCallTypes
+    ExemptBusinessGroupCallsFromCallBarring : CallBarring_ExemptBusinessGroupCallsFromCallBarring
+
+  Meta_PersistentProfile_EnhancedCallBarring
+    Subscribed : EnhancedCallBarring_Subscribed
+    UsageSensitiveBilling : EnhancedCallBarring_UsageSensitiveBilling
+    CurrSubBarredCallCategories : EnhancedCallBarring_CurrSubBarredCallCategories
+    CurrOpBarredCallCategories : EnhancedCallBarring_CurrOpBarredCallCategories
+
+  Meta_PersistentProfile_SelectiveCallBarring
+    Subscribed : SelectiveCallBarring_Subscribed
+    UsageSensitiveBilling : SelectiveCallBarring_UsageSensitiveBilling
+
+  Meta_PersistentProfile_MandatoryAccountCodes
+    Subscribed : MandatoryAccountCodes_Subscribed
+    Variant : MandatoryAccountCodes_Variant
+    USCallTypes : MandatoryAccountCodes_USCallTypes
+    UKCallTypes : MandatoryAccountCodes_UKCallTypes
+    CodeLength : MandatoryAccountCodes_CodeLength
+    MaxIncorrectCodeAttemptsPerCall : MandatoryAccountCodes_MaxIncorrectCodeAttemptsPerCall
+    MaxIncorrectCodeAttempts : MandatoryAccountCodes_MaxIncorrectCodeAttempts
+
+  Meta_PersistentProfile_WarmHotLine
+    Subscribed : WarmHotLine_Subscribed
+    ServiceLevel : WarmHotLine_ServiceLevel
+    Timeout : WarmHotLine_Timeout
+
+  Meta_PersistentProfile_BusinessGroupAdministration
+    AccountType : BusinessGroupAdministration_AccountType
+
+  Meta_PersistentProfile_BusinessCallManager
+    Subscribed : BusinessCallManager_Subscribed
+
+  Meta_PersistentProfile_Schedules
+    Subscribed : Schedules_Subscribed
+
+  Meta_PersistentProfile_3-WayCalling
+    Subscribed : _3WayCalling_Subscribed
+
+  Meta_PersistentProfile_PresenceService
+    Server : PresenceService_Server
+
+  Meta_PersistentProfile_LongDistanceAlert
+    Subscribed : LongDistanceAlert_Subscribed
+
+  Meta_PersistentProfile_OnlineChargingControls
+    RoPartiesCharged : OnlineChargingControls_RoPartiesCharged
+
+  Meta_PersistentProfile_ConnectedNameDelivery
+    SubscriberConnectedNameDeliverySubscribed : ConnectedNameDelivery_SubscriberConnected__verySubscribed
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    GroupIndex (INDEX)
+
+
+Meta_PersistentProfile_DMGInformation
+-------------------------------------
+  Meta_PersistentProfile_DMGInformationList
+    DelegatedManagementGroup : DelegatedManagementGroup
+    FriendlyName : FriendlyName
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    validsubscribertypes
+    NetworkElementName (IDENTIFIER)
+    PersistentProfileName (IDENTIFIER)
+    DMGIndex (INDEX)
+
+
+Meta_ReservedNumberRange
+------------------------
+  Meta_ReservedNumberRange_BaseInformation
+    ReservedNumberRangeType : BaseInformation_ReservedNumberRangeType
+    FirstNumber : BaseInformation_FirstNumber
+    LastNumber : BaseInformation_LastNumber
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    ReservedNumberRangeIndex (INDEX)
+
+
+Meta_RoutingPolicy
+------------------
+  Meta_RoutingPolicy_BaseInformation
+    Name : BaseInformation_Name
+    Department : BaseInformation_Department
+    LineSelectionMethod : BaseInformation_LineSelectionMethod
+    NumberOfLinesToTry : BaseInformation_NumberOfLinesToTry
+    NumberOfLinesToTryPerPriority : BaseInformation_NumberOfLinesToTryPerPriority
+    FallbackDirectoryNumber : BaseInformation_FallbackDirectoryNumber
+    DIDForkingPolicy : BaseInformation_DIDForkingPolicy
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    RoutingPolicyIndex (INDEX)
+
+
+Meta_RoutingPolicy_Line
+-----------------------
+  Meta_RoutingPolicy_ChildrenList_Line
+    RoutingPolicyLineIndex : RoutingPolicyLineIndex
+    PBXLine : PBXLine
+    UnavailableReroutingPolicy : UnavailableReroutingPolicy
+    UnavailableForwardingNumber : UnavailableForwardingNumber
+    UnavailableReroutingLine : UnavailableReroutingLine
+    AtCapacityReroutingPolicy : AtCapacityReroutingPolicy
+    AtCapacityForwardingNumber : AtCapacityForwardingNumber
+    AtCapacityReroutingLine : AtCapacityReroutingLine
+    DoNotConsiderLineForRoutingPolicyLineSelection : DoNotConsiderLineForRoutingPolicyLineSelection
+    TrunkGroupName : TrunkGroupName
+    Position : _Position
+    Priority : Priority
+    Weight : Weight
+    PBXLine : PBXDirectoryNumber
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    RoutingPolicyName (IDENTIFIER)
+
+
+Meta_SIPRegistrar
+-----------------
+  Meta_SIPRegistrar_BaseInformation
+    Name : BaseInformation_Name
+    ConfiguredSIPBinding : BaseInformation_ConfiguredSIPBinding
+    UseE164NumbersForDNBasedIdentities : BaseInformation_UseE164NumbersForDNBasedIdentities
+    MaximumOutstandingRegisterRequests : BaseInformation_MaximumOutstandingRegisterRequests
+    LimitRegisterRequestRate : BaseInformation_LimitRegisterRequestRate
+    MaximumRegisterRequestsPerSecond : BaseInformation_MaximumRegisterRequestsPerSecond
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    SIPRegistrarIndex (INDEX)
+
+
+Meta_SIPTrunk
+-------------
+  Meta_SIPTrunk_BaseInformation
+    SIPTrunkName : BaseInformation_SIPTrunkName
+    Description : BaseInformation_Description
+    TrunkGroupNumber : BaseInformation_TrunkGroupNumber
+    IncomingBillingUsesSignaledTrunkGroupNumber : BaseInformation_IncomingBillingUsesSignaledTrunkGroupNumber
+    OutgoingBillingUsesSignaledTrunkGroupNumber : BaseInformation_OutgoingBillingUsesSignaledTrunkGroupNumber
+    UseSignaledTrunkGroupIDInTCAPQueries : BaseInformation_UseSignaledTrunkGroupIDInTCAPQueries
+    NetworkNumber : BaseInformation_NetworkNumber
+    DefaultSTIRSHAKENAttestationLevel : BaseInformation_DefaultSTIRSHAKENAttestationLevel
+    STIRSHAKENOriginationID : BaseInformation_STIRSHAKENOriginationID
+    ConfiguredSIPBinding : BaseInformation_ConfiguredSIPBinding
+    ForceEchoCancellationOnInboundCalls : BaseInformation_ForceEchoCancellationOnInboundCalls
+    ForceEchoCancellationOnOutboundCalls : BaseInformation_ForceEchoCancellationOnOutboundCalls
+    SupportedCallDirections : BaseInformation_SupportedCallDirections
+    RecordIncomingCDRs : BaseInformation_RecordIncomingCDRs
+    RecordOutgoingCDRs : BaseInformation_RecordOutgoingCDRs
+    DeactivationMode : BaseInformation_DeactivationMode
+    DirectIXCConnection : BaseInformation_DirectIXCConnection
+    ExchangePerformsLNPLookup : BaseInformation_ExchangePerformsLNPLookup
+    PropagationDelay : BaseInformation_PropagationDelay
+    InternationalExchange : BaseInformation_InternationalExchange
+    SatelliteLink : BaseInformation_SatelliteLink
+    PeerNetworkType : BaseInformation_PeerNetworkType
+    ForceRoutingTrunk : BaseInformation_ForceRoutingTrunk
+    DefaultForceRoutingTrunk : BaseInformation_DefaultForceRoutingTrunk
+
+  Meta_SIPTrunk_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_SIPTrunk_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_SIPTrunk_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_SIPTrunk_BAFBilling
+    IncomingTerminatingCDRType : BAFBilling_IncomingTerminatingCDRType
+    GenerateAdditionalIncomingCallCDR : BAFBilling_GenerateAdditionalIncomingCallCDR
+    IncomingTandemCDRType : BAFBilling_IncomingTandemCDRType
+    OutgoingOriginatingCDRType : BAFBilling_OutgoingOriginatingCDRType
+    OutgoingTandemCDRType : BAFBilling_OutgoingTandemCDRType
+    AppendOriginatingLRNModule : BAFBilling_AppendOriginatingLRNModule
+    ConnectedSwitchLRN : BAFBilling_ConnectedSwitchLRN
+    OverrideSignalledLRN : BAFBilling_OverrideSignalledLRN
+    UseForwardingAddressAsChargeAddress : BAFBilling_UseForwardingAddressAsChargeAddress
+
+  Meta_SIPTrunk_BAFCNABillingForIncomingCalls
+    BAFCNABillingIncomingCallsCIC : BAFCNABillingForIncomingCalls_BAFCNABillingIncomingCallsCIC
+    BAFCNABillingIncomingCallsCNABillingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__ABillingNumber
+    BAFCNABillingIncomingCallsIncludeChargeNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__deChargeNumber
+    BAFCNABillingIncomingCallsIncludeCallingNumber : BAFCNABillingForIncomingCalls_BAFCNABillingInco__eCallingNumber
+
+  Meta_SIPTrunk_XMLBilling
+    TrunkAccountingReference : XMLBilling_TrunkAccountingReference
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    SIPTrunkIndex (INDEX)
+
+
+Meta_SubG
+---------
+  Meta_SubG_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+
+  Meta_SubG_BaseInformation
+    Description : BaseInformation_Description
+    IPAddress : BaseInformation_IPAddress
+    DomainName : BaseInformation_DomainName
+    MediaGatewayModel : BaseInformation_MediaGatewayModel
+    UseMediaIPAddressForNetworkNodeAssignment : BaseInformation_UseMediaIPAddressForNetworkNodeAssignment
+    CMTS : BaseInformation_CMTS
+    TAGLocation : BaseInformation_TAGLocation
+    ESAProtectionDomain : BaseInformation_ESAProtectionDomain
+    IPAddressInESAMode : BaseInformation_IPAddressInESAMode
+    UseStaticNATMapping : BaseInformation_UseStaticNATMapping
+    AuthenticationRequired : BaseInformation_AuthenticationRequired
+    MaximumConcurrentMediaStreamsAllowed : BaseInformation_MaximumConcurrentMediaStreamsAllowed
+    MaximumConcurrentHighBandwidthMediaStreamsAllowed : BaseInformation_MaximumConcurrentHighBandwidthM__StreamsAllowed
+    RTPPortName : BaseInformation_RTPPortName
+    SendChooseWildcardWithoutPortName : BaseInformation_SendChooseWildcardWithoutPortName
+    UseSeparatorCharacterInTerminationID : BaseInformation_UseSeparatorCharacterInTerminationID
+    SeparatorCharacter : BaseInformation_SeparatorCharacter
+    DeactivationMode : BaseInformation_DeactivationMode
+    MediaGatewayIPPort : BaseInformation_MediaGatewayIPPort
+
+  Meta_SubG_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_SubG_Diagnostics
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+
+  Meta_SubG_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    GatewayIndex (INDEX)
+
+
+Meta_SubG_AccessDevice
+----------------------
+  Meta_SubG_AccessDevicesList
+    MediaGatewayType : MediaGatewayType
+    SubscriberGateway : SubscriberGateway
+    ConnectionType : ConnectionType
+    AccessDeviceNumber : AccessDeviceNumber
+    AccessDevicePortName : AccessDevicePortName
+    AccessProtocol : AccessProtocol
+    Description : Description
+    MaximumLineNumber : MaximumLineNumber
+    DeactivationMode : DeactivationMode
+    RequestedStatus : RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    Gateway (IDENTIFIER)
+    DeviceIndex (INDEX)
+
+
+Meta_Subscriber
+---------------
+  Meta_Subscriber_BaseInformation
+    SubscriberType : BaseInformation_SubscriberType
+    DirectoryNumber : BaseInformation_DirectoryNumber
+    HeadLine : BaseInformation_HeadLine
+    DIDSubscriber : BaseInformation_DIDSubscriber
+    DIDCode : BaseInformation_DIDCode
+    RoutingType : BaseInformation_RoutingType
+    DIDRoutingPolicy : BaseInformation_DIDRoutingPolicy
+    FirstRoutingPolicyLineToTry : BaseInformation_FirstRoutingPolicyLineToTry
+    OwningPBX : BaseInformation_OwningPBX
+    TeenServiceLine : BaseInformation_TeenServiceLine
+    PresentationNumber : BaseInformation_PresentationNumber
+    ChargeNumber : BaseInformation_ChargeNumber
+    OverridableChargeNumber : BaseInformation_OverridableChargeNumber
+    CallingPartyNumber : BaseInformation_CallingPartyNumber
+    OverridableCallingPartyNumber : BaseInformation_OverridableCallingPartyNumber
+    Department : BaseInformation_Department
+    CallerIDToUseOnOutboundCalls : BaseInformation_CallerIDToUseOnOutboundCalls
+    AlwaysUseSubDNAsCIDForCallsFromMobLines : BaseInformation_AlwaysUseSubDNAsCIDForCallsFromMobLines
+    CallingPartyNumberForEmergencyCall : BaseInformation_CallingPartyNumberForEmergencyCall
+    DelegatedManagementGroup : BaseInformation_DelegatedManagementGroup
+    PersistentProfile : BaseInformation_PersistentProfile
+    AllowDirectDialing : BaseInformation_AllowDirectDialing
+    InUseBy : BaseInformation_InUseBy
+    SubscriberGroup : BaseInformation_SubscriberGroup
+    SubscriberGroupBusLine : BaseInformation_SubscriberGroupBusLine
+    PrimaryLineDirectoryNumberRO : BaseInformation_PrimaryLineDirectoryNumberRO
+    NumberStatus : BaseInformation_NumberStatus
+    PortedRoutingMethod : BaseInformation_PortedRoutingMethod
+    LocationRoutingNumber : BaseInformation_LocationRoutingNumber
+    RecentlyMovedFromOldNumber : BaseInformation_RecentlyMovedFromOldNumber
+    MovedFromDirectoryNumber : BaseInformation_MovedFromDirectoryNumber
+    ConnectCallAfterAnnouncement : BaseInformation_ConnectCallAfterAnnouncement
+    MovedToDirectoryNumber : BaseInformation_MovedToDirectoryNumber
+    MovedToNumberAsDialed : BaseInformation_MovedToNumberAsDialed
+    ExpiryDate : BaseInformation_ExpiryDate
+    PortedExchangeID : BaseInformation_PortedExchangeID
+    SignalingType : BaseInformation_SignalingType
+    CallServiceGroup : BaseInformation_CallServiceGroup
+    NoUserEquipment : BaseInformation_NoUserEquipment
+    FlashHookCallServicesProvidedBy : BaseInformation_FlashHookCallServicesProvidedBy
+    CallingNumberPrecedenceForEmergencyCalls : BaseInformation_CallingNumberPrecedenceForEmergencyCalls
+    AccessDevice : BaseInformation_AccessDevice
+    AccessLineNumber : BaseInformation_AccessLineNumber
+    ISDNInterface : BaseInformation_ISDNInterface
+    ISDNDefaultBearerCapabilities : BaseInformation_ISDNDefaultBearerCapabilities
+    DeliverISDNUserProvidedNumberOnEmergencyCall : BaseInformation_DeliverISDNUserProvidedNumberOnEmergencyCall
+    UseDNForIdentification : BaseInformation_UseDNForIdentification
+    DNIDInE164Format : BaseInformation_DNIDInE164Format
+    SIPUserName : BaseInformation_SIPUserName
+    SIPDomainName : BaseInformation_SIPDomainName
+    AuthenticationUsernameIncludesDomain : BaseInformation_AuthenticationUsernameIncludesDomain
+    MaximumSimultaneousRegistrations : BaseInformation_MaximumSimultaneousRegistrations
+    AccessionClientOnly : BaseInformation_AccessionClientOnly
+    SubMediaGatewayModel : BaseInformation_SubMediaGatewayModel
+    UseStaticNATMapping : BaseInformation_UseStaticNATMapping
+    SIPAuthenticationRequired : BaseInformation_SIPAuthenticationRequired
+    NetworkNode : BaseInformation_NetworkNode
+    PreferredLocationOfTrunkGateway : BaseInformation_PreferredLocationOfTrunkGateway
+    PermissibleInboundIPAddresses : BaseInformation_PermissibleInboundIPAddresses
+    MaximumCallAppearances : BaseInformation_MaximumCallAppearances
+    TypeOfAdditionalCallAppearances : BaseInformation_TypeOfAdditionalCallAppearances
+    MaximumPermittedContactRefreshInterval : BaseInformation_MaximumPermittedContactRefreshInterval
+    SignalFunctionCode : BaseInformation_SignalFunctionCode
+    LineUsage : BaseInformation_LineUsage
+    GR303NailedUpConnection : BaseInformation_GR303NailedUpConnection
+    PreSubscribedConnection : BaseInformation_PreSubscribedConnection
+    GR303DialType : BaseInformation_GR303DialType
+    FSKFormat : BaseInformation_FSKFormat
+    LongDistanceCarrier : BaseInformation_LongDistanceCarrier
+    IntraLATACarrier : BaseInformation_IntraLATACarrier
+    InternationalCarrier : BaseInformation_InternationalCarrier
+    OutOfArea : BaseInformation_OutOfArea
+    Locale : BaseInformation_Locale
+    SecondLocale : BaseInformation_SecondLocale
+    BillingType : BaseInformation_BillingType
+    AdviceOfChargeAOCD : BaseInformation_AdviceOfChargeAOCD
+    AdviceOfChargeAOCE : BaseInformation_AdviceOfChargeAOCE
+    RoutingAttributes : BaseInformation_RoutingAttributes
+    DenyAllUsageSensitiveFeatures : BaseInformation_DenyAllUsageSensitiveFeatures
+    LineSideAnswerSupervisionSupported : BaseInformation_LineSideAnswerSupervisionSupported
+    ServiceSuspended : BaseInformation_ServiceSuspended
+    ServiceSuspendedBusGrpLine : BaseInformation_ServiceSuspendedBusGrpLine
+    DigitMaskingRequired : BaseInformation_DigitMaskingRequired
+    TariffGroup : BaseInformation_TariffGroup
+    OriginatingFacilityMarksDisabled : BaseInformation_OriginatingFacilityMarksDisabled
+    OriginatingFacilityMarksAttendedCallOffice : BaseInformation_OriginatingFacilityMarksAttendedCallOffice
+    OriginatingFacilityMarksADC : BaseInformation_OriginatingFacilityMarksADC
+    TerminatingFacilityMarksServiceInterception : BaseInformation_TerminatingFacilityMarksServiceInterception
+    TerminatingFacilityMarksFixedDestinationService : BaseInformation_TerminatingFacilityMarksFixedDestinationService
+    ForceLNPLookup : BaseInformation_ForceLNPLookup
+    Timezone : BaseInformation_Timezone
+    AdjustForDaylightSavings : BaseInformation_AdjustForDaylightSavings
+    SubscriberTimezone : BaseInformation_SubscriberTimezone
+    LineTrafficStudy : BaseInformation_LineTrafficStudy
+    EnabledDate : BaseInformation_EnabledDate
+    BusinessGroupLinePrivileges : BaseInformation_BusinessGroupLinePrivileges
+    PayphoneMetering : BaseInformation_PayphoneMetering
+    ChargeIndication : BaseInformation_ChargeIndication
+    SubscriberCallingCategory : BaseInformation_SubscriberCallingCategory
+    NetworkDisconnectSignalDuration : BaseInformation_NetworkDisconnectSignalDuration
+    AllowRehoming : BaseInformation_AllowRehoming
+    PreferredSite : BaseInformation_PreferredSite
+    AccessDevice : BaseInformation_AccessDeviceGateway
+
+  Meta_Subscriber_CustomerInformation
+    CustInfo : CustomerInformation_CustInfo
+    CustInfo2 : CustomerInformation_CustInfo2
+    CustInfo3 : CustomerInformation_CustInfo3
+    CustInfo4 : CustomerInformation_CustInfo4
+    CustInfo5 : CustomerInformation_CustInfo5
+    CustInfo6 : CustomerInformation_CustInfo6
+    FirstName : CustomerInformation_FirstName
+    SecondName : CustomerInformation_SecondName
+    OtherNames : CustomerInformation_OtherNames
+    PenultimateName : CustomerInformation_PenultimateName
+    Surname : CustomerInformation_Surname
+
+  Meta_Subscriber_LineClassCodes
+    LineClassCode1 : LineClassCodes_LineClassCode1
+    LineClassCode2 : LineClassCodes_LineClassCode2
+    LineClassCode3 : LineClassCodes_LineClassCode3
+    LineClassCode4 : LineClassCodes_LineClassCode4
+    LineClassCode5 : LineClassCodes_LineClassCode5
+    LineClassCode6 : LineClassCodes_LineClassCode6
+    LineClassCode7 : LineClassCodes_LineClassCode7
+    LineClassCode8 : LineClassCodes_LineClassCode8
+    LineClassCode9 : LineClassCodes_LineClassCode9
+    LineClassCode10 : LineClassCodes_LineClassCode10
+    LineClassCode11 : LineClassCodes_LineClassCode11
+    LineClassCode12 : LineClassCodes_LineClassCode12
+    LineClassCode13 : LineClassCodes_LineClassCode13
+    LineClassCode14 : LineClassCodes_LineClassCode14
+    LineClassCode15 : LineClassCodes_LineClassCode15
+    LineClassCode16 : LineClassCodes_LineClassCode16
+    LineClassCode17 : LineClassCodes_LineClassCode17
+    LineClassCode18 : LineClassCodes_LineClassCode18
+    LineClassCode19 : LineClassCodes_LineClassCode19
+    LineClassCode20 : LineClassCodes_LineClassCode20
+
+  Meta_Subscriber_ActiveDate
+    ActiveYear : ActiveDate_ActiveYear
+    ActiveMonth : ActiveDate_ActiveMonth
+    ActiveDate : ActiveDate
+
+  Meta_Subscriber_Diagnostics
+    LogLevel : Diagnostics_LogLevel
+    APITraceEnabled : Diagnostics_APITraceEnabled
+    APITraceTag : Diagnostics_APITraceTag
+    APITraceRemoteNumber : Diagnostics_APITraceRemoteNumber
+
+  Meta_Subscriber_TestCalls
+    OverridingConfigSet : TestCalls_OverridingConfigSet
+
+  Meta_Subscriber_CallListsService
+    Subscribed : CallListsService_Subscribed
+    MaximumNumberOfCallsPerList : CallListsService_MaximumNumberOfCallsPerList
+
+  Meta_Subscriber_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_Subscriber_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Meta_Subscriber_PINChange
+    Subscribed : PINChange_Subscribed
+
+  Meta_Subscriber_AdvancedVoiceCodecs
+    Subscribed : AdvancedVoiceCodecs_Subscribed
+
+  Meta_Subscriber_VideoCodecs
+    Subscribed : VideoCodecs_Subscribed
+
+  Meta_Subscriber_HighRiskCallLimits
+    LimitType : HighRiskCallLimits_LimitType
+    MaximumHighRiskCalls : HighRiskCallLimits_MaximumHighRiskCalls
+
+  Meta_Subscriber_RedirectedCallLimits
+    Subscribed : RedirectedCallLimits_Subscribed
+    MaxSimultaneousRedirCalls : RedirectedCallLimits_MaxSimultaneousRedirCalls
+
+  Meta_Subscriber_OriginatingService
+    Subscribed : OriginatingService_Subscribed
+    Server : OriginatingService_Server
+
+  Meta_Subscriber_TerminatingService
+    Subscribed : TerminatingService_Subscribed
+    Server : TerminatingService_Server
+
+  Meta_Subscriber_RecordingService
+    Subscribed : RecordingService_Subscribed
+    Enabled : RecordingService_Enabled
+    Server : RecordingService_Server
+
+  Meta_Subscriber_CallForwardingServices
+    MaximumSimultaneousForwardings : CallForwardingServices_MaximumSimultaneousForwardings
+    UserNotificationOfCallDiversion : CallForwardingServices_UserNotificationOfCallDiversion
+    DeliverRedirectingNumberAsCallingNumber : CallForwardingServices_DeliverRedirecting__sCallingNumber
+    NumberReleasedToDivertedToUser : CallForwardingServices_NumberReleasedToDivertedToUser
+    NumberReleasedToCaller : CallForwardingServices_NumberReleasedToCaller
+    DivertedToNumberReleasedToCaller : CallForwardingServices_DivertedToNumberReleasedToCaller
+    RequireCourtesyCall : CallForwardingServices_RequireCourtesyCall
+    PlayConfirmTone : CallForwardingServices_PlayConfirmTone
+    IntegratedCallForwarding : CallForwardingServices_IntegratedCallForwarding
+
+  Meta_Subscriber_UnconditionalCallForwarding
+    Subscribed : UnconditionalCallForwarding_Subscribed
+    Variant : UnconditionalCallForwarding_Variant
+    Enabled : UnconditionalCallForwarding_Enabled
+    OverridableEnabled : UnconditionalCallForwarding_OverridableEnabled
+    Number : UnconditionalCallForwarding_Number
+    OverridableNumber : UnconditionalCallForwarding_OverridableNumber
+    SingleRing : UnconditionalCallForwarding_SingleRing
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : UnconditionalCallForwarding_Unconditional__nsitiveBilling
+
+  Meta_Subscriber_BusyCallForwarding
+    Subscribed : BusyCallForwarding_Subscribed
+    Variant : BusyCallForwarding_Variant
+    Enabled : BusyCallForwarding_Enabled
+    Number : BusyCallForwarding_Number
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : BusyCallForwarding_UnconditionalBusyAndDe__nsitiveBilling
+
+  Meta_Subscriber_DelayedCallForwarding
+    Subscribed : DelayedCallForwarding_Subscribed
+    Variant : DelayedCallForwarding_Variant
+    Enabled : DelayedCallForwarding_Enabled
+    Number : DelayedCallForwarding_Number
+    NoReplyTime : DelayedCallForwarding_NoReplyTime
+    UnconditionalBusyAndDelayCallForwardingUsageSensitiveBilling : DelayedCallForwarding_UnconditionalBusyAn__nsitiveBilling
+
+  Meta_Subscriber_UnavailableCallForwarding
+    Subscribed : UnavailableCallForwarding_Subscribed
+    Enabled : UnavailableCallForwarding_Enabled
+    OverridableEnabled : UnavailableCallForwarding_OverridableEnabled
+    Number : UnavailableCallForwarding_Number
+    OverridableNumber : UnavailableCallForwarding_OverridableNumber
+
+  Meta_Subscriber_SelectiveCallForwarding
+    Subscribed : SelectiveCallForwarding_Subscribed
+    Enabled : SelectiveCallForwarding_Enabled
+    NumberToForwardTo : SelectiveCallForwarding_NumberToForwardTo
+    SingleRing : SelectiveCallForwarding_SingleRing
+    UsageSensitiveBilling : SelectiveCallForwarding_UsageSensitiveBilling
+
+  Meta_Subscriber_BasicLineHunting
+    Subscribed : BasicLineHunting_Subscribed
+    Enabled : BasicLineHunting_Enabled
+    NoReplyTime : BasicLineHunting_NoReplyTime
+    Arrangement : BasicLineHunting_Arrangement
+
+  Meta_Subscriber_Find-me-follow-me
+    Subscribed : FindMeFollowMe_Subscribed
+    ServiceLevel : FindMeFollowMe_ServiceLevel
+    Enabled : FindMeFollowMe_Enabled
+
+  Meta_Subscriber_RemoteAccessToCallForwarding
+    Subscribed : RemoteAccessToCallForwarding_Subscribed
+
+  Meta_Subscriber_DirectedPickupNoBarge-in
+    DirectedPickupNoBargeInSubscribed : DirectedPickupNoBargeIn_Subscribed
+
+  Meta_Subscriber_AutomaticRecall
+    Subscribed : AutomaticRecall_Subscribed
+    UsageSensitiveBilling : AutomaticRecall_UsageSensitiveBilling
+
+  Meta_Subscriber_AutomaticCallback
+    Subscribed : AutomaticCallback_Subscribed
+    UsageSensitiveBilling : AutomaticCallback_UsageSensitiveBilling
+
+  Meta_Subscriber_CallTrace
+    Subscribed : CallTrace_Subscribed
+    UsageSensitiveBilling : CallTrace_UsageSensitiveBilling
+
+  Meta_Subscriber_CallingNumberDelivery
+    Subscribed : CallingNumberDelivery_Subscribed
+    Enabled : CallingNumberDelivery_Enabled
+    UsageSensitiveBilling : CallingNumberDelivery_UsageSensitiveBilling
+    PreferredSIPFormat : CallingNumberDelivery_PreferredSIPFormat
+    OverridePrivacySettingOfCallingSubscriber : CallingNumberDelivery_OverridePrivacySett__lingSubscriber
+
+  Meta_Subscriber_CallerIDPresentation
+    Subscribed : CallerIDPresentation_Subscribed
+    WithholdNumberByDefault : CallerIDPresentation_WithholdNumberByDefault
+    NumberWithholdRejectionReason : CallerIDPresentation_NumberWithholdRejectionReason
+    PresentNumberByDefault : CallerIDPresentation_PresentNumberByDefault
+    WithholdDirectoryNumber : CallerIDPresentation_WithholdDirectoryNumber
+    AlwaysPresentNumberForIntraBGCalls : CallerIDPresentation_AlwaysPresentNumberForIntraBGCalls
+
+  Meta_Subscriber_CallingNumberDeliveryBlocking
+    Subscribed : CallingNumberDeliveryBlocking_Subscribed
+    UsageSensitiveBilling : CallingNumberDeliveryBlocking_UsageSensitiveBilling
+
+  Meta_Subscriber_CallingNameDelivery
+    Subscribed : CallingNameDelivery_Subscribed
+    LocalName : CallingNameDelivery_LocalName
+    LocalNameBusLine : CallingNameDelivery_LocalNameBusLine
+    UseLocalNameForIntraBGCallsOnly : CallingNameDelivery_UseLocalNameForIntraBGCallsOnly
+    Enabled : CallingNameDelivery_Enabled
+    UsageSensitiveBilling : CallingNameDelivery_UsageSensitiveBilling
+
+  Meta_Subscriber_CallingNameAndNumberDeliveryOverIP
+    Subscribed : CallingNameAndNumberDeliveryOverIP_Subscribed
+    Enabled : CallingNameAndNumberDeliveryOverIP_Enabled
+    Destination : CallingNameAndNumberDeliveryOverIP_Destination
+
+  Meta_Subscriber_LastCallerIDErasure
+    Subscribed : LastCallerIDErasure_Subscribed
+
+  Meta_Subscriber_ConnectedNumberDelivery
+    SubsCallerIdConnectedNumberDeliverySubscribed : ConnectedNumberDelivery_SubsCallerIdConne__verySubscribed
+    OverridePrivacySettingOfConnectedSubscriber : ConnectedNumberDelivery_OverridePrivacySe__ctedSubscriber
+
+  Meta_Subscriber_ConnectedLineIDPresentation
+    SubsCIDConnectedLineIDPresentationSubscribed : ConnectedLineIDPresentation_SubsCIDConnec__tionSubscribed
+    SubsCIDConnLineIDPresentWithholdNumber : ConnectedLineIDPresentation_SubsCIDConnLi__WithholdNumber
+    SubsCIDConnLineIDPresentationPresentNumber : ConnectedLineIDPresentation_SubsCIDConnLi__nPresentNumber
+
+  Meta_Subscriber_DialedNameDelivery
+    Subscribed : DialedNameDelivery_Subscribed
+    Enabled : DialedNameDelivery_Enabled
+
+  Meta_Subscriber_SelectiveCallRejection
+    Subscribed : SelectiveCallRejection_Subscribed
+    Enabled : SelectiveCallRejection_Enabled
+    UsageSensitiveBilling : SelectiveCallRejection_UsageSensitiveBilling
+
+  Meta_Subscriber_AnonymousCallRejection
+    Subscribed : AnonymousCallRejection_Subscribed
+    Enabled : AnonymousCallRejection_Enabled
+    UsageSensitiveBilling : AnonymousCallRejection_UsageSensitiveBilling
+
+  Meta_Subscriber_DoNotDisturb
+    Subscribed : DoNotDisturb_Subscribed
+    Enabled : DoNotDisturb_Enabled
+    ServiceLevel : DoNotDisturb_ServiceLevel
+    SingleRing : DoNotDisturb_SingleRing
+    IntegratedDND : DoNotDisturb_IntegratedDND
+    SelectiveCallAcceptanceUsageSensitiveBilling : DoNotDisturb_SelectiveCallAcceptanceUsageSensitiveBilling
+
+  Meta_Subscriber_PriorityCall
+    Subscribed : PriorityCall_Subscribed
+    Enabled : PriorityCall_Enabled
+    UsageSensitiveBilling : PriorityCall_UsageSensitiveBilling
+
+  Meta_Subscriber_AutomatedCallDistribution
+    ServiceLevel : AutomatedCallDistribution_ServiceLevel
+
+  Meta_Subscriber_Off-HookDelaySubscriberTrigger
+    Subscribed : OffHookDelaySubscriberTrigger_Subscribed
+    Trigger : OffHookDelaySubscriberTrigger_Trigger
+
+  Meta_Subscriber_TerminationAttemptTrigger
+    Subscribed : TerminationAttemptTrigger_Subscribed
+    Trigger : TerminationAttemptTrigger_Trigger
+
+  Meta_Subscriber_Voicemail
+    SharePrimaryLineVoicemailMailbox : Voicemail_SharePrimaryLineVoicemailMailbox
+    Subscribed : Voicemail_Subscribed
+    CallDeliveryMethod : Voicemail_CallDeliveryMethod
+    VoicemailSystemLineGroup : Voicemail_SystemLineGroup
+    RetrievalNumber : Voicemail_RetrievalNumber
+    IncomingNumber : Voicemail_IncomingNumber
+    ApplicationServer : Voicemail_ApplicationServer
+    IndicatorNotificationMethod : Voicemail_IndicatorNotificationMethod
+    SMDILink : Voicemail_SMDILink
+    AuthorizedIDForIndicatorControl : Voicemail_AuthorizedIDForIndicatorControl
+    IndicatorNotificationApplicationServer : Voicemail_IndicatorNotificationApplicationServer
+    VisualMessageWaitingIndicator : Voicemail_VisualMessageWaitingIndicator
+    AudibleMessageWaitingIndicator : Voicemail_AudibleMessageWaitingIndicator
+    SIPMessageWaitingIndicator : Voicemail_SIPMessageWaitingIndicator
+    CallTransferTime : Voicemail_CallTransferTime
+
+  Meta_Subscriber_ReminderCalls
+    Subscribed : ReminderCalls_Subscribed
+    UsageSensitiveBilling : ReminderCalls_UsageSensitiveBilling
+
+  Meta_Subscriber_RegularReminderCalls
+    Subscribed : RegularReminderCalls_Subscribed
+
+  Meta_Subscriber_3-WayCalling
+    Subscribed : _3WayCalling_Subscribed
+
+  Meta_Subscriber_CallTransfer
+    Subscribed : CallTransfer_Subscribed
+
+  Meta_Subscriber_3-WayCallingCallTransferBilling
+    TWCCTConfUsageSensitiveBilling : _3WayCallingCallTransferBilling_TWCCTConf__nsitiveBilling
+
+  Meta_Subscriber_CallHold
+    Subscribed : CallHold_Subscribed
+
+  Meta_Subscriber_MusicOnHoldIntegrated
+    Subscribed : MusicOnHoldIntegrated_Subscribed
+
+  Meta_Subscriber_AnnouncementOnHold
+    Subscribed : AnnouncementOnHold_Subscribed
+
+  Meta_Subscriber_CallWaiting
+    Subscribed : CallWaiting_Subscribed
+    Enabled : CallWaiting_Enabled
+
+  Meta_Subscriber_CallWaitingWithCallerID
+    Subscribed : CallWaitingWithCallerID_Subscribed
+
+  Meta_Subscriber_HomeIntercom
+    Subscribed : HomeIntercom_Subscribed
+    DistinctiveRinging : HomeIntercom_DistinctiveRinging
+
+  Meta_Subscriber_LineStateMonitoring
+    Subscribed : LineStateMonitoring_Subscribed
+    MaximumNumberOfLines : LineStateMonitoring_MaximumNumberOfLines
+    MonitorDoNotDisturbStatus : LineStateMonitoring_MonitorDoNotDisturbStatus
+
+  Meta_Subscriber_SpeedCalling
+    Subscribed : SpeedCalling_Subscribed
+    AllowedTypes : SpeedCalling_AllowedTypes
+    HandsetAccessAllowed : SpeedCalling_HandsetAccessAllowed
+
+  Meta_Subscriber_CallBarring
+    Subscribed : CallBarring_Subscribed
+    UsageSensitiveBilling : CallBarring_UsageSensitiveBilling
+    CurrentSubscriberBarredCallTypes : CallBarring_CurrentSubscriberBarredCallTypes
+    CurrentOperatorBarredCallTypes : CallBarring_CurrentOperatorBarredCallTypes
+
+  Meta_Subscriber_EnhancedCallBarring
+    Subscribed : EnhancedCallBarring_Subscribed
+    UsageSensitiveBilling : EnhancedCallBarring_UsageSensitiveBilling
+    CurrSubBarredCallCategories : EnhancedCallBarring_CurrSubBarredCallCategories
+    CurrOpBarredCallCategories : EnhancedCallBarring_CurrOpBarredCallCategories
+
+  Meta_Subscriber_SelectiveCallBarring
+    Subscribed : SelectiveCallBarring_Subscribed
+    UsageSensitiveBilling : SelectiveCallBarring_UsageSensitiveBilling
+
+  Meta_Subscriber_MandatoryAccountCodes
+    Subscribed : MandatoryAccountCodes_Subscribed
+    Variant : MandatoryAccountCodes_Variant
+    USCallTypes : MandatoryAccountCodes_USCallTypes
+    UKCallTypes : MandatoryAccountCodes_UKCallTypes
+    InheritCodesAndCodeLength : MandatoryAccountCodes_InheritCodesAndCodeLength
+    CodeLength : MandatoryAccountCodes_CodeLength
+    MaxIncorrectCodeAttemptsPerCall : MandatoryAccountCodes_MaxIncorrectCodeAttemptsPerCall
+    MaxIncorrectCodeAttempts : MandatoryAccountCodes_MaxIncorrectCodeAttempts
+    ValidAccountCodes : MandatoryAccountCodes_ValidAccountCodes
+
+  Meta_Subscriber_WarmHotLine
+    Subscribed : WarmHotLine_Subscribed
+    ServiceLevel : WarmHotLine_ServiceLevel
+    Timeout : WarmHotLine_Timeout
+    Enabled : WarmHotLine_Enabled
+    Number : WarmHotLine_Number
+
+  Meta_Subscriber_TeenServiceLine1
+    Configured : TeenServiceLine1_Configured
+    DirectoryNumber : TeenServiceLine1_DirectoryNumber
+    RingPattern : TeenServiceLine1_RingPattern
+    NumberStatus : TeenServiceLine1_NumberStatus
+
+  Meta_Subscriber_TeenServiceLine2
+    Configured : TeenServiceLine2_Configured
+    DirectoryNumber : TeenServiceLine2_DirectoryNumber
+    RingPattern : TeenServiceLine2_RingPattern
+    NumberStatus : TeenServiceLine2_NumberStatus
+
+  Meta_Subscriber_TeenServiceLine3
+    Configured : TeenServiceLine3_Configured
+    DirectoryNumber : TeenServiceLine3_DirectoryNumber
+    RingPattern : TeenServiceLine3_RingPattern
+    NumberStatus : TeenServiceLine3_NumberStatus
+
+  Meta_Subscriber_BusinessCallManager
+    Subscribed : BusinessCallManager_Subscribed
+
+  Meta_Subscriber_BusinessGroupAdministration
+    AccountType : BusinessGroupAdministration_AccountType
+    AdministrationDepartment : BusinessGroupAdministration_AdministrationDepartment
+    ACDSupervisor : BusinessGroupAdministration_ACDSupervisor
+
+  Meta_Subscriber_WebServices_Diagnostics
+    APITraceEnabled : WebServices_Diagnostics_APITraceEnabled
+    APITraceTag : WebServices_Diagnostics_APITraceTag
+
+  Meta_Subscriber_Schedules
+    Subscribed : Schedules_Subscribed
+
+  Meta_MADN_BaseInformation
+    CallLimitAlgorithm : BaseInformation_CallLimitAlgorithm
+    CallLimitValue : BaseInformation_CallLimitValue
+    MultipleAppearanceDirectoryNumber : BaseInformation_MultipleAppearanceDirectoryNumber
+    MLHGIndex : BaseInformation_MLHGIndex
+    MLHGMemberIndex : BaseInformation_MLHGMemberIndex
+    PIN : BaseInformation_PIN
+    MADNApplyDistinctiveRingPattern : BaseInformation_MADNApplyDistinctiveRingPattern
+    MADNRingPattern : BaseInformation_MADNRingPattern
+    ActiveYear : BaseInformation_ActiveYear
+    ActiveMonth : BaseInformation_ActiveMonth
+    ActiveDate : BaseInformation_ActiveDate
+
+  Meta_MADN_LineHunting
+    Subscribed : LineHunting_Subscribed
+    NoReplyTime : LineHunting_NoReplyTime
+    Arrangement : LineHunting_Arrangement
+
+  Meta_MLHGPilotDN_BaseInformation
+    MLHGApplyDistinctiveRingPattern : BaseInformation_MLHGApplyDistinctiveRingPattern
+    MLHGRingPattern : BaseInformation_MLHGRingPattern
+    PresentPilotNameToAgents : BaseInformation_PresentPilotNameToAgents
+
+  Meta_MLHGPilotDN_ExitMLHGQueue
+    Enabled : ExitMLHGQueue_Enabled
+    ForwardToVoicemail : ExitMLHGQueue_ForwardToVoicemail
+    NumberToForwardTo : ExitMLHGQueue_NumberToForwardTo
+
+  Meta_PBX_BaseInformation
+    ChargeNumberRequired : BaseInformation_ChargeNumberRequired
+    DefaultNumberOfDIDDigits : BaseInformation_DefaultNumberOfDIDDigits
+    UseConfiguredTrunkGroupID : BaseInformation_UseConfiguredTrunkGroupID
+    BillingUsesSignaledTrunkGroupParameter : BaseInformation_BillingUsesSignaledTrunkGroupParameter
+    ApplicationServerPBX : BaseInformation_ApplicationServerPBX
+    TrunkGroupID : BaseInformation_TrunkGroupID
+    LineSelectionMethod : BaseInformation_LineSelectionMethod
+    DialtoneSupported : BaseInformation_DialtoneSupported
+    RingbackSupported : BaseInformation_RingbackSupported
+    PBXFixBits : BaseInformation_PBXFixBits
+    ANIDNISFormat : BaseInformation_ANIDNISFormat
+    SendDIDSequenceForListedDirectoryNumber : BaseInformation_SendDIDSequenceForListedDirectoryNumber
+    DNISUsedInDIDSequenceForListedDirectoryNumber : BaseInformation_DNISUsedInDIDSequenceForListedDirectoryNumber
+    NumberOfPulsedDigits : BaseInformation_NumberOfPulsedDigits
+    UseDirectoryNumberForDNISOnSIPLines : BaseInformation_UseDirectoryNumberForDNISOnSIPLines
+    SupportsExtensionDialingBySuffixDigits : BaseInformation_SupportsExtensionDialingBySuffixDigits
+    SendDDIPrefixExtensionDialingBySuffixDigits : BaseInformation_SendDDIPrefixExtensionDialingBySuffixDigits
+    DDIPrefixForExtensionDialingBySuffixDigits : BaseInformation_DDIPrefixForExtensionDialingBySuffixDigits
+    UseNationalNumberingPlanOn10DigitCalls : BaseInformation_UseNationalNumberingPlanOn10DigitCalls
+    CallingNumberConnectedLineIDScreening : BaseInformation_CallingNumberConnectedLineIDScreening
+    ActionOnFailedCallingNumberScreening : BaseInformation_ActionOnFailedCallingNumberScreening
+    AdditionalCallingNumberScreeningForEmergencyCalls : BaseInformation_AdditionalCallingNumberSc__EmergencyCalls
+    UnownedNumberSTIRSHAKENAttestationLevel : BaseInformation_UnownedNumberSTIRSHAKENAttestationLevel
+    STIRSHAKENOriginationID : BaseInformation_STIRSHAKENOriginationID
+    EnterpriseID : BaseInformation_EnterpriseID
+    OutboundCalledPartyTON : BaseInformation_OutboundCalledPartyTON
+    NormalizeInboundCallingPartyNumber : BaseInformation_NormalizeInboundCallingPartyNumber
+    PBXPrefixDN : BaseInformation_PBXPrefixDN
+    TotalCallsLimit : BaseInformation_TotalCallsLimit
+    MaximumCalls : BaseInformation_MaximumCalls
+    TerminatingCallsLimit : BaseInformation_TerminatingCallsLimit
+    MaximumTerminatingCalls : BaseInformation_MaximumTerminatingCalls
+    OriginatingCallsLimit : BaseInformation_OriginatingCallsLimit
+    MaximumOriginatingCalls : BaseInformation_MaximumOriginatingCalls
+    LimitIntraBGCalls : BaseInformation_LimitIntraBGCalls
+    LDNPBXCapacityGroup : BaseInformation_LDNPBXCapacityGroup
+    UsePBXSuppliedFailureReasonForUnsuccessfulCalls : BaseInformation_UsePBXSuppliedFailureReasonForUnsuccessfulCalls
+
+  Meta_PBX_BusinessGroup
+    BusinessGroup : BusinessGroup
+    Department : BusinessGroup_Department
+    ExternalLineCode : BusinessGroup_ExternalLineCode
+    InternalLineCode : BusinessGroup_InternalLineCode
+    StarReplacementForPulseDialing : BusinessGroup_StarReplacementForPulseDialing
+    ForceSimpleMatching : BusinessGroup_ForceSimpleMatching
+
+  Meta_PBX_Alarms
+    AlarmState : Alarms_AlarmState
+    AlarmStateTimestamp : Alarms_AlarmStateTimestamp
+
+  Meta_PBX_UnconditionalCallForwarding
+    UseValuesAsDefaultsOnDIDNumbers : UnconditionalCallForwarding_UseValuesAsDefaultsOnDIDNumbers
+    AppendExtensionNumber : UnconditionalCallForwarding_AppendExtensionNumber
+
+  Meta_PBX_BusyCallForwarding
+    AppendExtensionNumber : BusyCallForwarding_AppendExtensionNumber
+
+  Meta_PBX_DelayedCallForwarding
+    AppendExtensionNumber : DelayedCallForwarding_AppendExtensionNumber
+
+  Meta_PBX_UnavailableCallForwarding
+    AppendExtensionNumber : UnavailableCallForwarding_AppendExtensionNumber
+
+  Meta_PBX_SelectiveCallForwarding
+    AppendExtensionNumber : SelectiveCallForwarding_AppendExtensionNumber
+    NumberOfAnonymousNumbersForwarded : SelectiveCallForwarding_NumberOfAnonymousNumbersForwarded
+
+  Meta_PBX_CallerIDPresentation
+    CIDIgnorePBXSigPrsnt : CallerIDPresentation_CIDIgnorePBXSigPrsnt
+    CIDUsePBXSigPrsnt : CallerIDPresentation_CIDUsePBXSigPrsnt
+
+  Meta_PBX_ConnectedLineIDPresentation
+    SubsCIDConnectedLineIDPresentationIgnore : ConnectedLineIDPresentation_SubsCIDConnec__entationIgnore
+
+  Meta_PBX_DoNotDisturb
+    SelectiveCallAcceptanceNumberOfAnonymousNumbers : DoNotDisturb_SelectiveCallAcceptanceNumberOfAnonymousNumbers
+
+  Meta_PBX_MandatoryAccountCodes
+    USMandatoryAccountCodesCallTypes2 : MandatoryAccountCodes_USMandatoryAccountCodesCallTypes2
+    UKMandatoryAccountCodesCallTypes : MandatoryAccountCodes_UKMandatoryAccountCodesCallTypes
+    Blocked : MandatoryAccountCodes_Blocked
+
+  Meta_PBX_Voicemail
+    SendDIDNumberToVoicemailServerOnForwardedCalls : Voicemail_SendDIDNumberToVoicemailServerOnForwardedCalls
+
+  Meta_Subscriber_PresenceService
+    Server : PresenceService_Server
+
+  Meta_PBX_OnlineChargingControls
+    RoPartiesCharged : OnlineChargingControls_RoPartiesCharged
+
+  Meta_PBXDIDNumber_BaseInformation
+    ParentPBXDirectoryNumber : BaseInformation_ParentPBXDirectoryNumber
+
+  Meta_Subscriber_LongDistanceAlert
+    Subscribed : LongDistanceAlert_Subscribed
+
+  Meta_Subscriber_DeviceTwinning
+    Support : DeviceTwinning_Support
+    TwinnedUseDNForIdentification : DeviceTwinning_TwinnedUseDNForIdentification
+    TwinnedSIPUserName : DeviceTwinning_TwinnedSIPUserName
+    TwinnedSIPDomainName : DeviceTwinning_TwinnedSIPDomainName
+    TwinnedMaximumSimultaneousRegistrations : DeviceTwinning_TwinnedMaximumSimultaneousRegistrations
+    TwinnedMediaGatewayModel : DeviceTwinning_TwinnedMediaGatewayModel
+    TwinnedUseStaticNATMapping : DeviceTwinning_TwinnedUseStaticNATMapping
+    TwinnedSIPAuthenticationRequired : DeviceTwinning_TwinnedSIPAuthenticationRequired
+    TwinnedPreferredLocationOfTrunkGateway : DeviceTwinning_TwinnedPreferredLocationOfTrunkGateway
+    TwinnedMaximumCallAppearances : DeviceTwinning_TwinnedMaximumCallAppearances
+    TwinnedMaximumPermittedContactRefreshInterval : DeviceTwinning_TwinnedMaximumPermittedContactRefreshInterval
+
+  Meta_Subscriber_ConnectedNameDelivery
+    SubscriberConnectedNameDeliverySubscribed : ConnectedNameDelivery_SubscriberConnected__verySubscribed
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    MLHGName (IDENTIFIER)
+    NumberBlockStart (INDEX)
+    _Type (INDEX)
+    DIDDirectoryNumber (IDENTIFIER)
+
+
+Meta_Subscriber_AdditionalIdentity
+----------------------------------
+  Meta_Subscriber_AdditionalIdentitiesList
+    Identity : _Identity
+    RawDirectoryNumber : RawDirectoryNumber
+    UseAdditionalIDAsCIDOnOrigCalls : UseAdditionalIDAsCIDOnOrigCalls
+    CallRecordingStatus : CallRecordingStatus
+    MusicOnHoldStatus : MusicOnHoldStatus
+    ForceRoutingTrunk : ForceRoutingTrunk
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (INDEX)
+    NumberBlockStart (INDEX)
+    DirectoryNumber (IDENTIFIER)
+    AddnIdIndex (INDEX)
+
+
+Meta_SubscriberSchedule
+-----------------------
+  Meta_SubscriberSchedule_BaseInformation
+    Name : BaseInformation_Name
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    BaseInformation_DelegatedManagementGroup
+    NetworkElementName (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    NumberBlockStart (INDEX)
+    DirectoryNumber (IDENTIFIER)
+    ScheduleIndex (INDEX)
+    MLHGName (IDENTIFIER)
+
+
+Meta_SubscriberSchedule_Period
+------------------------------
+  Meta_SubscriberSchedule_PeriodsList
+    Name : _Name
+    DaysOfTheWeek : DaysOfTheWeek
+    StartHour : StartHour
+    StartMinute : StartMinute
+    EndHour : EndHour
+    EndMinute : EndMinute
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    DirectoryNumber (IDENTIFIER)
+    ScheduleName (IDENTIFIER)
+    PeriodIndex (IDENTIFIER)
+    BusinessGroupName (IDENTIFIER)
+    NumberBlockStart (INDEX)
+    MLHGName (IDENTIFIER)
+
+
+Meta_TAGAccessDevice
+--------------------
+  Meta_TAGAccessDevice_BaseInformation
+    MediaGatewayType : BaseInformation_MediaGatewayType
+    TrunkAccessGateway : BaseInformation_TrunkAccessGateway
+    ConnectionType : BaseInformation_ConnectionType
+    AccessDeviceNumber : BaseInformation_AccessDeviceNumber
+    AccessDevicePortName : BaseInformation_AccessDevicePortName
+    AccessProtocol : BaseInformation_AccessProtocol
+    Description : BaseInformation_Description
+    MaximumLineNumber : BaseInformation_MaximumLineNumber
+    ReceiveGain : BaseInformation_ReceiveGain
+    TransmitGain : BaseInformation_TransmitGain
+    DeactivationMode : BaseInformation_DeactivationMode
+
+  Meta_TAGAccessDevice_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_TAGAccessDevice_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    Gateway (IDENTIFIER)
+    DeviceIndex (INDEX)
+
+
+Meta_TDMPort
+------------
+  Meta_TDMPort_BaseInformation
+    Type : BaseInformation_Type
+    Name : BaseInformation_Name
+    Description : BaseInformation_Description
+    ProfilesSupported : BaseInformation_ProfilesSupported
+    ProviderStatus : BaseInformation_ProviderStatus
+    DeactivationMode : BaseInformation_DeactivationMode
+    ISDNDChannelAvailable : BaseInformation_ISDNDChannelAvailable
+    UserSideISDNDChannelAvailable : BaseInformation_UserSideISDNDChannelAvailable
+
+  Meta_TDMPort_Alarms
+    FaultMonitoringProfile : Alarms_FaultMonitoringProfile
+    ApplyFMPToRelatedObjectTypes : Alarms_ApplyFMPToRelatedObjectTypes
+    AllowFMPsFromRelatedObjectsToApply : Alarms_AllowFMPsFromRelatedObjectsToApply
+
+  Meta_TDMPort_Status
+    RequestedStatus : Status_RequestedStatus
+
+  Non-Sh Fields
+    baseinformation_version
+    row_id (UNIQUE DATABASE ROW ID)
+    NetworkElementName (IDENTIFIER)
+    Gateway (IDENTIFIER)
+    PortIndex (INDEX)

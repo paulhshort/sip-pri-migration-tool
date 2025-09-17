@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     ])
     
     log(`Files written successfully: ${metaswitchPath}, ${netsapiensPath}`)
-    
+
     return NextResponse.json({
       summary: {
         pbxLines: directoryNumbers.length,
@@ -103,9 +103,10 @@ export async function POST(request: NextRequest) {
       files: {
         metaswitch: `/api/download?file=${encodeURIComponent(metaswitchFilename)}`,
         netsapiens: `/api/download?file=${encodeURIComponent(netsapiensFilename)}`
-      }
+      },
+      numbers: expandedNumbers
     })
-    
+
   } catch (error) {
     logError('Generate API error', error)
     

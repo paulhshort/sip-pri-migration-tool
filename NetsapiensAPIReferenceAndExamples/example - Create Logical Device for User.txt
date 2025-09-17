@@ -1,0 +1,75 @@
+REQUEST (NODE JS)
+
+
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.createDevice({
+  synchronous: 'yes',
+  device: '1004a',
+  'auto-answer-enabled': 'no',
+  'device-provisioning-sip-transport-protocol': 'udp'
+}, {
+  domain: 'exampledomain.com',
+  user: '1004'
+})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+
+```
+
+
+RESPONSE (200 Success, this endpoint allows synchronous `yes` so success returns a JSON object of the created device which for us is crucial as it contains the password we need to incorporate into the updated Adtran configurations for FXS  - "device-sip-registration-password": "4Mx9YYKlJ0iGjJdi"):
+
+```
+{
+  "device": "1004a",
+  "user": "1004",
+  "domain": "exampledomain.com",
+  "device-sip-registration-uri": "sip:1004a@exampledomain.com",
+  "device-sip-registration-state": "unregistered",
+  "device-sip-registration-password": "4Mx9YYKlJ0iGjJdi",
+  "auto-answer-enabled": "no",
+  "caller-id-number-emergency": "[*]",
+  "core-server": "",
+  "device-force-notify-new-voicemails-enabled": "no",
+  "device-level-call-recording-enabled": "no",
+  "device-push-enabled": "no",
+  "device-sip-allowed-user-agent": "",
+  "device-sip-latency-seconds-average": 0,
+  "device-sip-latency-seconds-current": 0,
+  "device-sip-nat-traversal": "automatic",
+  "device-sip-no-to-tag-in-cancel": "no",
+  "device-sip-registration-contact": "",
+  "device-sip-registration-datetime": "",
+  "device-sip-registration-expires-datetime": "",
+  "device-sip-registration-expiry-seconds": 60,
+  "device-sip-registration-ignore-for-presence-calculation": "no",
+  "device-sip-registration-ignore-report-enabled": "no",
+  "device-sip-registration-ip-address": "",
+  "device-sip-registration-user-agent": "",
+  "device-srtp-enabled": "no",
+  "emergency-address-id": "add_address_id",
+  "emergency-address-pretty-printed": false,
+  "emergency-address-provisioned-as-endpoint": false,
+  "emergency-address-source": "user_level",
+  "emergency-address-source-ip-address": false,
+  "error-reading-from-endpoint-module": "no",
+  "login-username": "1004@exampledomain.com",
+  "name-full-name": "FXS 4"
+}
+
+```
+
+In this example, we created a logical device for "FXS 4" / 1004@exampledomain.com, we would then use it's device-sip-registration-password ("4Mx9YYKlJ0iGjJdi") within the updated adtran config for the corrosponding FXS voice user's `sip-identity`:
+  ```
+  voice user 2485551212   //This would be the phonenumber/directory number corrosponding to the specific FXS
+    connect fxs 0/4
+    no special-ring-cadences
+    sip-identity 1004 T02 register auth-name 1004 password 4Mx9YYKlJ0iGjJdi
+    codec-list DEFAULT
+```
+
+IMPORTANT: Since this tool will double as both a migration and update tool, as well as eventually for provisioning brand new customers, its important to understand that the bulk of time, we will be using this to migrate/update existing deployed adtrans for our customers, so the FXS / Voice users / trunks will already exist in the adtran, and thus just need to be updated to the correct new values for the Netsapiens domain/trunk/FXS Users

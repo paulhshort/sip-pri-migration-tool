@@ -17,6 +17,11 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# --- Build-time public flags (for client bundle) ---
+# These are safe to expose and control UI features in the client.
+ARG NEXT_PUBLIC_ENABLE_AUTOMATION=false
+ENV NEXT_PUBLIC_ENABLE_AUTOMATION=$NEXT_PUBLIC_ENABLE_AUTOMATION
+
 # Build the application
 RUN pnpm build
 
@@ -42,7 +47,13 @@ RUN mkdir -p data/output && chown nextjs:nodejs data/output
 
 # Set proper permissions
 RUN chown -R nextjs:nodejs /app
-USER nextjs
+
+# Install su-exec to drop privileges at runtime after fixing volume permissions
+RUN apk add --no-cache su-exec
+
+# Copy entrypoint to handle volume permission fixups then drop to non-root user
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 3000
@@ -56,5 +67,7 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js
 
-# Start the application
+# Use entrypoint to adjust runtime permissions and drop privileges
+ENTRYPOINT ["/entrypoint.sh"]
+# Start the application as nextjs user (via entrypoint)
 CMD ["node", "server.js"]

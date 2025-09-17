@@ -1,0 +1,53 @@
+Example NODE JS Request to create a new PRI Connection
+
+
+REQUEST:
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.createConnection({
+  'connection-orig-match-pattern': 'sip*@apidog.pri',
+  'connection-term-match-pattern': 'sip*@apidog.pri',
+  domain: 'apidog.com',
+  'connection-pcmu-only-enabled': 'no',
+  'dial-policy': 'Permit All',
+  'connection-sip-get-new-dialog-destination-from': 'default-ip',
+  'connection-prevent-rtp-port-change-enabled': 'no',
+  'connection-remote-ringback-handling': 'allowed',
+  'limits-max-active-calls-orig': '0',
+  'connection-sip-transport-protocol': 'UDP',
+  'connection-custom-p-asserted-id-format': 'hello',
+  'connection-sip-session-timer-enabled': 'yes',
+  'connection-audio-relay-enabled': 'yes',
+  description: 'Example PRI Connection for domain apidog.com',
+  'dial-plan': 'US and Canada',
+  'connection-sip-registration-realm': 'apidog.com',
+  'connection-term-enabled': 'yes',
+  'connection-linked-billing-user': 'domain',
+  'connection-enforce-minimum-duration-enabled': 'no',
+  'connection-hide-post-dial-delay-with-ringback-enabled': 'no',
+  'connection-sip-registration-username': '2485551212',
+  'connection-translation-source-user': '[*]',
+  'connection-include-server-header-enabled': 'yes',
+  'connection-bind-to-alternate-interface-enabled': 'no',
+  'limits-max-active-calls-total': '0',
+  'connection-sip-get-response-destination-from': 'default-ip',
+  'connection-translation-request-user': '[*]',
+  'connection-address': 'sip:2485551212@apidog.pri',
+  'connection-block-video-in-sdp-enabled': 'no',
+  'connection-translation-destination-host': 'apidog.pri',
+  'limits-max-active-calls-term': '0',
+  'connection-translation-request-host': 'apidog.pri',
+  'connection-source-ip-checking-enabled': 'yes',
+  'connection-orig-enabled': 'yes',
+  'connection-translation-destination-user': '[*]',
+  'connection-require-sip-authentication-enabled': 'yes',
+  'connection-translation-source-host': 'apidog.pri',
+  'minimum-call-duration-second': '1',
+  'connection-sip-registration-expires-datetime': '2025-05-19 02:41:11',
+  'connection-sip-authenticate-as-client-enabled': 'no'
+})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+  ```

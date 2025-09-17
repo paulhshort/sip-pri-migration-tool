@@ -1,0 +1,58 @@
+In this example, we are getting all logical devices for a specific user (FXS 4 / 1004)
+
+
+Request:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.getDevices({domain: 'exampledomain.com', user: '1004'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+
+
+Response:
+
+
+```
+[
+  {
+    "device": "1004a",
+    "user": "1004",
+    "domain": "exampledomain.com",
+    "device-sip-registration-uri": "sip:1004a@exampledomain.com",
+    "device-sip-registration-state": "unregistered",
+    "device-sip-registration-password": "4Mx9YYKlJ0iGjJdi",
+    "auto-answer-enabled": "no",
+    "caller-id-number-emergency": "[*]",
+    "core-server": "",
+    "device-force-notify-new-voicemails-enabled": "no",
+    "device-level-call-recording-enabled": "no",
+    "device-push-enabled": "no",
+    "device-sip-allowed-user-agent": "",
+    "device-sip-latency-seconds-average": 0,
+    "device-sip-latency-seconds-current": 0,
+    "device-sip-nat-traversal": "automatic",
+    "device-sip-no-to-tag-in-cancel": "no",
+    "device-sip-registration-contact": "",
+    "device-sip-registration-datetime": "",
+    "device-sip-registration-expires-datetime": "",
+    "device-sip-registration-expiry-seconds": 60,
+    "device-sip-registration-ignore-for-presence-calculation": "no",
+    "device-sip-registration-ignore-report-enabled": "no",
+    "device-sip-registration-ip-address": "",
+    "device-sip-registration-user-agent": "",
+    "device-srtp-enabled": "no",
+    "emergency-address-id": "",
+    "error-reading-from-endpoint-module": "no",
+    "login-username": "1004@exampledomain.com",
+    "name-full-name": "FXS 4"
+  }
+]
+
+```
+
+
+In this example 1004 has one logical device, `1004a`, and in the response we can see the  "device-sip-registration-password" for us to grab in order to update the corrosponding voice user within the adtran to populate it in the `sip-identity` 

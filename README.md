@@ -1,10 +1,17 @@
 # SIP/PRI Migration Tool
 
+[![CI](https://github.com/paulhshort/sip-pri-migration-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/paulhshort/sip-pri-migration-tool/actions/workflows/ci.yml) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen.svg)](https://docs.github.com/en/code-security/dependabot)
+
 A comprehensive web application for generating CSV files from Metaswitch ShadowDB queries to facilitate SIP/PRI migrations. This tool queries PBX lines and DID ranges from the ShadowDB and generates properly formatted CSV files for import into both Metaswitch and NetSapiens systems.
 
 ![Grid4 Logo](https://ambitious-coast-0a8b2110f.1.azurestaticapps.net/smartcomm_logo.svg)
 
 ## 🚀 Features
+
+### Combined Automation: PRI vs SIP Trunk Flows
+- PRI flow: Plans Adtran NetVanta updates, validates OS gating, and can apply configuration via SSH (guarded by `ALLOW_ADTRAN_APPLY=false` by default). Outputs NetSapiens Connection (trunk) templates and number routing.
+- SIP trunk flow: Generates NetSapiens phone-number CSVs and user/device scaffolding. Uses NetSapiens API (`NS_API_BASE_URL`, `NS_API_KEY`) for optional domain, connection, and device automation when `NEXT_PUBLIC_ENABLE_AUTOMATION=true`.
+- Safety: All automation defaults to read-only or dry-run; live device changes require explicit env flags and secrets set in CI via GitHub Secrets (never commit secrets).
 
 - **Intelligent Binding Search**: Autocomplete with fuzzy search across all 277+ SIP bindings in ShadowDB
 - **Complete Data Retrieval**: Finds all PBX lines and related DID ranges using pattern matching
@@ -72,20 +79,47 @@ A comprehensive web application for generating CSV files from Metaswitch ShadowD
 
 ### Environment Variables
 
-The application requires the following environment variables:
+All variables below are defined in `.env.example`.
 
 ```bash
-# Database Configuration (Required)
-DB_HOST=10.100.30.60          # ShadowDB host IP
-DB_PORT=5432                   # PostgreSQL port
-DB_NAME=shadow_config_db       # Database name
-DB_USER=shadowconfigread       # Read-only username
-DB_PASSWORD=your_password      # Database password
+# Database (Required)
+DB_HOST=...           # ShadowDB host IP
+DB_PORT=5432          # PostgreSQL port
+DB_NAME=shadow_config_db
+DB_USER=shadowconfigread
+DB_PASSWORD=...
 
-# Application Configuration (Optional)
-PORT=3000                      # Application port
-NODE_ENV=production           # Environment mode
+# NetSapiens (Optional for automation)
+NS_API_BASE_URL=https://portal.example.com/ns-api/v2/
+NS_API_KEY=...
+NS_SIPBX_SERVER=core1
+NS_CORE_SERVER=core1-ord.grid4voice.ucaas.tech
+ALLOW_DOMAIN_CREATE=false
+
+# Adtran (Guarded)
+ADTRAN_SSH_USER=adtran_readonly
+ADTRAN_SSH_PASS=...
+ADTRAN_ENABLE_PASS=...
+ADTRAN_TEST_IP=8.2.147.30
+TEST_LIVE_ADTRAN=false
+ALLOW_ADTRAN_APPLY=false
+
+# Firmware gating
+MINIMUM_OS_MAJOR=13
+RECOMMENDED_OS_VERSION=R13.12.0.E
+STRICT_OS_GATING=false
+
+# UI / toggles
+NEXT_PUBLIC_ENABLE_AUTOMATION=false
+
+# App
+PORT=3000
+NODE_ENV=production
 ```
+
+Notes:
+- Provide secrets via GitHub Actions secrets for CI (e.g., `NS_API_KEY`, `ADTRAN_ENABLE_PASS`).
+- Never commit `.env`. Use `.env.example` as the source of truth.
 
 ### Database Requirements
 
@@ -182,6 +216,9 @@ docker run -d \
 The Docker image includes health checks that verify application responsiveness.
 
 ## 🧪 Testing
+
+See docs/TESTING.md for scenarios and fixtures.
+
 
 ```bash
 # Run unit tests

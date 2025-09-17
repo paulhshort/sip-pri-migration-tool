@@ -1,0 +1,51 @@
+Request example 1 - Adding new Phonenumber and assigning it to an FXS 4 user in exampledomain.com:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.createPhonenumber({
+  enabled: 'yes',
+  phonenumber: '12485551213',
+  'dial-rule-application': 'to-user',
+  'dial-rule-translation-destination-user': '1004',
+  'dial-rule-translation-destination-host': 'exampledomain.com',
+  'dial-rule-description': 'Example of adding a new phone number and assigning it to FXS 4 User in exampledomain.com'
+}, {domain: 'exampledomain.com'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+Expected Response:
+```
+{
+  "code": 202,
+  "message": "Accepted"
+}
+```
+
+
+Request example 2 - Adding a new Phonenumber and assigning it to a SIP Trunk('exampledomain.pri') associated with exampledomain.com:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.createPhonenumber({
+  enabled: 'yes',
+  phonenumber: '12485551212',
+  'dial-rule-application': 'to-connection',
+  'dial-rule-translation-destination-user': 'exampledomain.pri',
+  'dial-rule-translation-destination-host': 'exampledomain.pri',
+  'dial-rule-description': 'Example of adding a new phone number for a PRI'
+}, {domain: 'exampledomain.com'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+
+Expected Response:
+```
+{
+  "code": 202,
+  "message": "Accepted"
+}
+```

@@ -1,0 +1,39 @@
+Request example - Retrieving all Phonenumbers associated with exampledomain.com:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.getDomainPhonenumbers({domain: 'exampledomain.com'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+Expected Response example:
+```
+[
+  {
+    "domain": "exampledomain.com",
+    "phonenumber": "12485551212",
+    "dial-rule-application": "to-connection",
+    "dial-rule-description": "Example of adding a new phone number for a PRI",
+    "dial-rule-parameter": "",
+    "dial-rule-translation-destination-host": "exampledomain.pri",
+    "dial-rule-translation-destination-user": "exampledomain.pri",
+    "dial-rule-translation-source-name": "[*]",
+    "enabled": "yes"
+  },
+  {
+    "domain": "exampledomain.com",
+    "phonenumber": "12485551213",
+    "dial-rule-application": "to-user",
+    "dial-rule-description": "Example of adding a new phone number and assigning it to FXS 4",
+    "dial-rule-parameter": "",
+    "dial-rule-translation-destination-host": "exampledomain.com",
+    "dial-rule-translation-destination-user": "1004",
+    "dial-rule-translation-source-name": "[*]",
+    "enabled": "yes"
+  }
+]
+```
+
+
