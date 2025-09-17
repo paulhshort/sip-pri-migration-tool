@@ -10,3 +10,5 @@
 - 19:36 EDT: Tests: `pnpm test -- tests/unit/netsapiens.test.ts`
 - 19:49 EDT: Added NetSapiens connections API wrapper/routes, improved JSON validation, and wired the UI to surface ShadowDB + NetSapiens insights (domain + numbers).
 - 19:49 EDT: Tests: `pnpm test -- tests/unit/netsapiens.test.ts`
+- 20:08 EDT: Implemented NetSapiens user/device helpers and API routes with masking plus expanded unit tests.
+- 20:08 EDT: Tests: `pnpm test -- tests/unit/netsapiens.test.ts`

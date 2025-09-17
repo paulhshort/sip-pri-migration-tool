@@ -5,6 +5,11 @@ import {
   listConnections,
   getConnection,
   createConnection,
+  listUsers,
+  getUser,
+  createUser,
+  listDevices,
+  createDevice,
   listPhoneNumbers,
   createPhoneNumber,
   updatePhoneNumber,
@@ -335,5 +340,172 @@ describe('NetSapiens client', () => {
 
     expect(result.domain).toBe('demo.example')
     expect(result.sipRegistrationUsername).toBe('user123')
+  })
+
+  it('lists users for a domain', async () => {
+    const payload = [
+      {
+        domain: 'demo.example',
+        user: '1004',
+        'name-first-name': 'FXS',
+        'name-last-name': '4',
+        'login-username': '1004@demo.example',
+        'user-scope': 'No Portal',
+        'dial-plan': 'demo.example',
+        'dial-policy': 'US and Canada',
+        'time-zone': 'US/Eastern',
+      },
+    ]
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await listUsers('demo.example')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}domains/demo.example/users`)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      domain: 'demo.example',
+      user: '1004',
+      firstName: 'FXS',
+      lastName: '4',
+    })
+  })
+
+  it('retrieves a specific user via array payload', async () => {
+    const payload = [
+      {
+        domain: 'demo.example',
+        user: '1004',
+        'name-first-name': 'FXS',
+        'name-last-name': '4',
+        'login-username': '1004@demo.example',
+      },
+    ]
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await getUser('demo.example', '1004')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}domains/demo.example/users/1004`)
+    expect(result).not.toBeNull()
+    expect(result).toMatchObject({ user: '1004' })
+  })
+
+  it('creates a user with synchronous flag by default', async () => {
+    const responsePayload = {
+      domain: 'demo.example',
+      user: '1004',
+      'name-first-name': 'FXS',
+      'name-last-name': '4',
+      'login-username': '1004@demo.example',
+    }
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(`${API_BASE}domains/demo.example/users`)
+      expect(init?.method).toBe('POST')
+      const body = JSON.parse((init?.body as string) ?? '{}')
+      expect(body.synchronous).toBe('yes')
+      expect(body.user).toBe('1004')
+      return new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await createUser('demo.example', {
+      user: '1004',
+      'name-first-name': 'FXS',
+      'name-last-name': '4',
+      'login-username': '1004@demo.example',
+      'dial-plan': 'demo.example',
+      'dial-policy': 'US and Canada',
+      'time-zone': 'US/Eastern',
+      'user-scope': 'No Portal',
+      'language-token': 'en_US',
+    })
+
+    expect(result.user).toBe('1004')
+    expect(result.firstName).toBe('FXS')
+  })
+
+  it('lists devices for a user and exposes password', async () => {
+    const payload = [
+      {
+        domain: 'demo.example',
+        user: '1004',
+        device: '1004a',
+        'device-sip-registration-username': '1004a',
+        'device-sip-registration-password': '4Mx9YYKlJ0iGjJdi',
+      },
+    ]
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await listDevices('demo.example', '1004')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${API_BASE}domains/demo.example/users/1004/devices`)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      device: '1004a',
+      sipRegistrationPassword: '4Mx9YYKlJ0iGjJdi',
+    })
+  })
+
+  it('creates a device with synchronous flag by default', async () => {
+    const responsePayload = {
+      domain: 'demo.example',
+      user: '1004',
+      device: '1004a',
+      'device-sip-registration-password': '4Mx9YYKlJ0iGjJdi',
+    }
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(`${API_BASE}domains/demo.example/users/1004/devices`)
+      expect(init?.method).toBe('POST')
+      const body = JSON.parse((init?.body as string) ?? '{}')
+      expect(body.synchronous).toBe('yes')
+      expect(body.device).toBe('1004a')
+      return new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const result = await createDevice('demo.example', '1004', {
+      device: '1004a',
+      'auto-answer-enabled': 'no',
+      'device-provisioning-sip-transport-protocol': 'udp',
+    })
+
+    expect(result.device).toBe('1004a')
+    expect(result.sipRegistrationPassword).toBe('4Mx9YYKlJ0iGjJdi')
   })
 })

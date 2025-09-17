@@ -76,6 +76,53 @@ export const createConnectionRequestSchema = z.object({
   'connection-sip-transport-protocol': z.string().optional(),
 }).passthrough()
 
+const userRecordSchema = z.object({
+  domain: z.string(),
+  user: z.string(),
+  'name-first-name': z.string().nullish(),
+  'name-last-name': z.string().nullish(),
+  'login-username': z.string().nullish(),
+  'user-scope': z.string().nullish(),
+  'dial-plan': z.string().nullish(),
+  'dial-policy': z.string().nullish(),
+  'time-zone': z.string().nullish(),
+}).passthrough()
+
+const usersResponseSchema = z.array(userRecordSchema)
+const userSingleOrArraySchema = z.union([userRecordSchema, usersResponseSchema])
+
+export const createUserRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  user: z.string().min(1),
+  'name-first-name': z.string().min(1),
+  'name-last-name': z.string().min(1),
+  'login-username': z.string().min(1),
+  'dial-plan': z.string().min(1),
+  'dial-policy': z.string().min(1),
+  'time-zone': z.string().min(1),
+  'user-scope': z.string().min(1),
+  'language-token': z.string().min(1),
+}).passthrough()
+
+const deviceRecordSchema = z.object({
+  domain: z.string(),
+  user: z.string(),
+  device: z.string(),
+  'device-sip-registration-username': z.string().nullish(),
+  'device-sip-registration-password': z.string().nullish(),
+  'device-sip-registration-uri': z.string().nullish(),
+}).passthrough()
+
+const devicesResponseSchema = z.array(deviceRecordSchema)
+const deviceSingleOrArraySchema = z.union([deviceRecordSchema, devicesResponseSchema])
+
+export const createDeviceRequestSchema = z.object({
+  synchronous: z.enum(['yes', 'no']).optional(),
+  device: z.string().min(1),
+  'auto-answer-enabled': z.string().optional(),
+  'device-provisioning-sip-transport-protocol': z.string().min(1),
+}).passthrough()
+
 const phoneNumberRecordSchema = z.object({
   domain: z.string(),
   phonenumber: z.string(),
@@ -349,6 +396,37 @@ export type UpdatePhoneNumberRequest = z.infer<typeof updatePhoneNumberRequestSc
 
 export type NetsapiensAcceptedResponse = z.infer<typeof acceptedResponseSchema>
 
+type UserRecord = z.infer<typeof userRecordSchema>
+
+export type NetsapiensUser = {
+  domain: string
+  user: string
+  firstName?: string
+  lastName?: string
+  loginUsername?: string
+  scope?: string
+  dialPlan?: string
+  dialPolicy?: string
+  timeZone?: string
+  raw: UserRecord
+}
+
+export type CreateUserRequest = z.infer<typeof createUserRequestSchema>
+
+type DeviceRecord = z.infer<typeof deviceRecordSchema>
+
+export type NetsapiensDevice = {
+  domain: string
+  user: string
+  device: string
+  sipRegistrationUsername?: string
+  sipRegistrationPassword?: string
+  sipRegistrationUri?: string
+  raw: DeviceRecord
+}
+
+export type CreateDeviceRequest = z.infer<typeof createDeviceRequestSchema>
+
 const mapDomainRecord = (record: DomainRecord): NetsapiensDomain => ({
   domain: record.domain,
   reseller: emptyToUndefined(record.reseller ?? undefined),
@@ -396,6 +474,29 @@ const mapPhoneNumberRecord = (record: PhoneNumberRecord): NetsapiensPhoneNumber 
     raw: record,
   }
 }
+
+const mapUserRecord = (record: UserRecord): NetsapiensUser => ({
+  domain: record.domain,
+  user: record.user,
+  firstName: emptyToUndefined(record['name-first-name'] ?? undefined),
+  lastName: emptyToUndefined(record['name-last-name'] ?? undefined),
+  loginUsername: emptyToUndefined(record['login-username'] ?? undefined),
+  scope: emptyToUndefined(record['user-scope'] ?? undefined),
+  dialPlan: emptyToUndefined(record['dial-plan'] ?? undefined),
+  dialPolicy: emptyToUndefined(record['dial-policy'] ?? undefined),
+  timeZone: emptyToUndefined(record['time-zone'] ?? undefined),
+  raw: record,
+})
+
+const mapDeviceRecord = (record: DeviceRecord): NetsapiensDevice => ({
+  domain: record.domain,
+  user: record.user,
+  device: record.device,
+  sipRegistrationUsername: emptyToUndefined(record['device-sip-registration-username'] ?? undefined),
+  sipRegistrationPassword: emptyToUndefined(record['device-sip-registration-password'] ?? undefined),
+  sipRegistrationUri: emptyToUndefined(record['device-sip-registration-uri'] ?? undefined),
+  raw: record,
+})
 
 export async function listDomains(options: DomainListOptions = {}): Promise<NetsapiensDomain[]> {
   const searchParams = new URLSearchParams()
@@ -528,4 +629,66 @@ export async function updatePhoneNumber(domain: string, phonenumber: string, inp
   })
 
   return response
+}
+
+export async function listUsers(domain: string): Promise<NetsapiensUser[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/users`, { method: 'GET' }, usersResponseSchema)
+  log('Fetched NetSapiens users', { domain, count: records.length })
+  return records.map(mapUserRecord)
+}
+
+export async function getUser(domain: string, user: string): Promise<NetsapiensUser | null> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const payload = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}`, { method: 'GET' }, userSingleOrArraySchema)
+
+  const records = Array.isArray(payload) ? payload : [payload]
+
+  if (!records.length) {
+    return null
+  }
+
+  log('Retrieved NetSapiens user', { domain, user })
+  return mapUserRecord(records[0])
+}
+
+export async function createUser(domain: string, input: CreateUserRequest): Promise<NetsapiensUser> {
+  const encodedDomain = encodeURIComponent(domain)
+  const payload = createUserRequestSchema.parse({ synchronous: 'yes', ...input })
+  const response = await netsapiensRequest(`domains/${encodedDomain}/users`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, userRecordSchema)
+
+  log('Created NetSapiens user', { domain, user: response.user })
+  return mapUserRecord(response)
+}
+
+export async function listDevices(domain: string, user: string): Promise<NetsapiensDevice[]> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const records = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}/devices`, { method: 'GET' }, devicesResponseSchema)
+  log('Fetched NetSapiens devices', { domain, user, count: records.length })
+  return records.map(mapDeviceRecord)
+}
+
+export async function createDevice(domain: string, user: string, input: CreateDeviceRequest): Promise<NetsapiensDevice> {
+  const encodedDomain = encodeURIComponent(domain)
+  const encodedUser = encodeURIComponent(user)
+  const payload = createDeviceRequestSchema.parse({ synchronous: 'yes', ...input })
+  const rawResponse = await netsapiensRequest(`domains/${encodedDomain}/users/${encodedUser}/devices`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, deviceSingleOrArraySchema)
+
+  const response = Array.isArray(rawResponse) ? rawResponse[0] : rawResponse
+
+  log('Created NetSapiens device', {
+    domain,
+    user,
+    device: response.device,
+  })
+
+  return mapDeviceRecord(response)
 }
