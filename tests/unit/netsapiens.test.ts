@@ -14,6 +14,8 @@ import {
   createPhoneNumber,
   updatePhoneNumber,
   domainExists,
+  batchCreateUsers,
+  batchCreateDevices,
 } from '@/lib/netsapiens'
 
 const API_BASE = 'https://ns.example.com/ns-api/v2/'
@@ -507,5 +509,105 @@ describe('NetSapiens client', () => {
 
     expect(result.device).toBe('1004a')
     expect(result.sipRegistrationPassword).toBe('4Mx9YYKlJ0iGjJdi')
+  })
+
+  it('batchCreateUsers handles partial failures and idempotency', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const users = [
+      { user: '1001', 'name-first-name': 'A', 'name-last-name': 'A', 'login-username': '1001@demo.example', 'dial-plan': 'demo.example', 'dial-policy': 'US and Canada', 'time-zone': 'US/Eastern', 'user-scope': 'No Portal', 'language-token': 'en_US' },
+      { user: '1002', 'name-first-name': 'B', 'name-last-name': 'B', 'login-username': '1002@demo.example', 'dial-plan': 'demo.example', 'dial-policy': 'US and Canada', 'time-zone': 'US/Eastern', 'user-scope': 'No Portal', 'language-token': 'en_US' },
+      { user: '1003', 'name-first-name': 'C', 'name-last-name': 'C', 'login-username': '1003@demo.example', 'dial-plan': 'demo.example', 'dial-policy': 'US and Canada', 'time-zone': 'US/Eastern', 'user-scope': 'No Portal', 'language-token': 'en_US' },
+    ] as const
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init })
+      // checkUserExists via GET user
+      if (url === `${API_BASE}domains/demo.example/users/1001`) {
+        return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (url === `${API_BASE}domains/demo.example/users/1002`) {
+        // user exists
+        return new Response(JSON.stringify([{ domain: 'demo.example', user: '1002' }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (url === `${API_BASE}domains/demo.example/users/1003`) {
+        return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // createUser POSTs
+      if (url === `${API_BASE}domains/demo.example/users` && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body))
+        if (body.user === '1001') {
+          return new Response(JSON.stringify({ domain: 'demo.example', user: '1001' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (body.user === '1003') {
+          return new Response(JSON.stringify({ code: 500, message: 'server error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      }
+
+      return new Response('Not Found', { status: 404 })
+    })
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const res = await batchCreateUsers('demo.example', users as unknown as any[])
+
+    expect(res.successes.map((s) => s.index)).toEqual([0])
+    expect(res.skipped.map((s) => s.index)).toEqual([1])
+    expect(res.errors.map((e) => e.index)).toEqual([2])
+  })
+
+  it('batchCreateDevices rolls back created devices on error', async () => {
+    const devices = [
+      { device: '1001a', 'auto-answer-enabled': 'no', 'device-provisioning-sip-transport-protocol': 'udp' },
+      { device: '1001b', 'auto-answer-enabled': 'no', 'device-provisioning-sip-transport-protocol': 'udp' },
+      { device: '1001c', 'auto-answer-enabled': 'no', 'device-provisioning-sip-transport-protocol': 'udp' },
+    ] as const
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      // Existence checks listDevices
+      if (url === `${API_BASE}domains/demo.example/users/1001/devices` && (!init || init.method === 'GET')) {
+        return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      // Create device
+      if (url === `${API_BASE}domains/demo.example/users/1001/devices` && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body))
+        if (body.device === '1001a' || body.device === '1001b') {
+          return new Response(JSON.stringify({ domain: 'demo.example', user: '1001', device: body.device }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (body.device === '1001c') {
+          return new Response(JSON.stringify({ code: 500, message: 'server error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      }
+
+      // Rollback DELETEs
+      if (url === `${API_BASE}domains/demo.example/users/1001/devices/1001a` && init?.method === 'DELETE') {
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (url === `${API_BASE}domains/demo.example/users/1001/devices/1001b` && init?.method === 'DELETE') {
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      return new Response('Not Found', { status: 404 })
+    })
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
+
+    const res = await batchCreateDevices('demo.example', '1001', devices as unknown as any[])
+
+    expect(res.successes.map((s) => s.index)).toEqual([0, 1])
+    expect(res.errors.map((e) => e.index)).toEqual([2])
   })
 })

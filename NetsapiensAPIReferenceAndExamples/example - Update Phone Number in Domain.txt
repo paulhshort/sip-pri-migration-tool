@@ -1,0 +1,41 @@
+Request example 1 - Updating existing Phonenumber to assign it to an FXS User 4 in exampledomain.com:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.updatePhonenumber({
+  enabled: 'yes',
+  'dial-rule-application': 'to-user',
+  'dial-rule-translation-destination-host': 'exampledomain.com',
+  'dial-rule-translation-destination-user': '1004',
+  'dial-rule-description': 'Example of updating an existing phone number to assign it to the exampledomain.com domain, and assign it to the FXS user 1004 '
+}, {
+  domain: 'exampledomain.com',
+  phonenumber: '2485551212'
+})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+
+
+
+Request example 2 - Updating existing Phonenumber to assign it to a SIP Trunk associated with exampledomain.com:
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.updatePhonenumber({
+  enabled: 'yes',
+  'dial-rule-application': 'to-connection',
+  'dial-rule-translation-destination-host': 'exampledomain.com',
+  'dial-rule-translation-destination-user': 'exampledomain.pri',
+  'dial-rule-description': 'Example of updating an existing phone number to assign it to the exampledomain.com domain, and assign it to the FXS user 1004 '
+}, {
+  domain: 'exampledomain.com',
+  phonenumber: '2485551212'
+})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```

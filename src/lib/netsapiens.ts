@@ -1,9 +1,13 @@
 import { z } from 'zod'
 import { log, warn, error as logError } from './logger'
+import { maskSecret } from './secrets'
 
 const MAX_RETRIES = 3
 const BASE_BACKOFF_MS = 1000
 const JITTER_MS = 200
+
+// Batch constraints
+const MAX_BATCH_SIZE = 10
 
 const domainRecordSchema = z.object({
   domain: z.string(),
@@ -53,6 +57,7 @@ const connectionRecordSchema = z.object({
 }).passthrough()
 
 const connectionsResponseSchema = z.array(connectionRecordSchema)
+const connectionSingleOrArraySchema = z.union([connectionRecordSchema, connectionsResponseSchema])
 
 export const createConnectionRequestSchema = z.object({
   synchronous: z.enum(['yes', 'no']).optional(),
@@ -116,6 +121,11 @@ const deviceRecordSchema = z.object({
 const devicesResponseSchema = z.array(deviceRecordSchema)
 const deviceSingleOrArraySchema = z.union([deviceRecordSchema, devicesResponseSchema])
 
+// Generic schema that accepts any/void, useful for DELETE 204s
+const unknownResponseSchema = z.unknown()
+
+let domainCountFallbackWarned = false
+
 export const createDeviceRequestSchema = z.object({
   synchronous: z.enum(['yes', 'no']).optional(),
   device: z.string().min(1),
@@ -158,19 +168,15 @@ export const updatePhoneNumberRequestSchema = z.object({
   'dial-rule-parameter': z.string().optional(),
 }).passthrough()
 
-const acceptedResponseSchema = z.object({
-  code: z.number(),
-  message: z.string(),
-}).passthrough()
-
-const maskSecret = (value: string | null | undefined) => {
-  if (!value) {
-    return value ?? ''
-  }
-
-  const lastFour = value.slice(-4)
-  return `****${lastFour}`
-}
+const acceptedResponseSchema = z.union([
+  z
+    .object({
+      code: z.number().optional(),
+      message: z.string().optional(),
+    })
+    .passthrough(),
+  z.string(),
+])
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -394,7 +400,10 @@ export type CreatePhoneNumberRequest = z.infer<typeof createPhoneNumberRequestSc
 
 export type UpdatePhoneNumberRequest = z.infer<typeof updatePhoneNumberRequestSchema>
 
-export type NetsapiensAcceptedResponse = z.infer<typeof acceptedResponseSchema>
+export type NetsapiensAcceptedResponse = {
+  code: number
+  message: string
+}
 
 type UserRecord = z.infer<typeof userRecordSchema>
 
@@ -426,6 +435,16 @@ export type NetsapiensDevice = {
 }
 
 export type CreateDeviceRequest = z.infer<typeof createDeviceRequestSchema>
+
+// Batch types
+export type BatchItemSuccess<T> = { index: number; result: T }
+export type BatchItemSkipped<I> = { index: number; input: I; reason: 'exists' }
+export type BatchItemError<I> = { index: number; input: I; message: string; status?: number }
+export type BatchResult<T, I> = {
+  successes: BatchItemSuccess<T>[]
+  skipped: BatchItemSkipped<I>[]
+  errors: BatchItemError<I>[]
+}
 
 const mapDomainRecord = (record: DomainRecord): NetsapiensDomain => ({
   domain: record.domain,
@@ -498,6 +517,18 @@ const mapDeviceRecord = (record: DeviceRecord): NetsapiensDevice => ({
   raw: record,
 })
 
+const normalizeAcceptedResponse = (value: unknown): NetsapiensAcceptedResponse => {
+  if (typeof value === 'string') {
+    return { code: 202, message: value || 'Accepted' }
+  }
+
+  const record = value as { code?: number; message?: string }
+  return {
+    code: record.code ?? 202,
+    message: record.message ?? 'Accepted',
+  }
+}
+
 export async function listDomains(options: DomainListOptions = {}): Promise<NetsapiensDomain[]> {
   const searchParams = new URLSearchParams()
   if (options.limit) {
@@ -520,7 +551,19 @@ export async function countDomain(domain: string): Promise<number> {
 }
 
 export async function domainExists(domain: string): Promise<boolean> {
-  return (await countDomain(domain)) > 0
+  try {
+    return (await countDomain(domain)) > 0
+  } catch (error) {
+    if (!domainCountFallbackWarned) {
+      domainCountFallbackWarned = true
+      warn('NetSapiens domain count endpoint unavailable; falling back to listDomains', {
+        message: (error as Error).message,
+      })
+    }
+
+    const domains = await listDomains({ limit: 1000 })
+    return domains.some((entry) => entry.domain.toLowerCase() === domain.toLowerCase())
+  }
 }
 
 export async function createDomain(input: CreateDomainRequest): Promise<NetsapiensDomain> {
@@ -545,7 +588,13 @@ export async function listConnections(domain: string): Promise<NetsapiensConnect
 export async function getConnection(domain: string, matchPattern: string): Promise<NetsapiensConnection | null> {
   const encodedDomain = encodeURIComponent(domain)
   const encodedPattern = encodeURIComponent(matchPattern)
-  const records = await netsapiensRequest(`domains/${encodedDomain}/connections/${encodedPattern}`, { method: 'GET' }, connectionsResponseSchema)
+  const payload = await netsapiensRequest(
+    `domains/${encodedDomain}/connections/${encodedPattern}`,
+    { method: 'GET' },
+    connectionSingleOrArraySchema,
+  )
+
+  const records = Array.isArray(payload) ? payload : [payload]
 
   if (!records.length) {
     return null
@@ -610,7 +659,7 @@ export async function createPhoneNumber(domain: string, input: CreatePhoneNumber
     application: payload['dial-rule-application'],
   })
 
-  return response
+  return normalizeAcceptedResponse(response)
 }
 
 export async function updatePhoneNumber(domain: string, phonenumber: string, input: UpdatePhoneNumberRequest) {
@@ -628,7 +677,7 @@ export async function updatePhoneNumber(domain: string, phonenumber: string, inp
     application: payload['dial-rule-application'],
   })
 
-  return response
+  return normalizeAcceptedResponse(response)
 }
 
 export async function listUsers(domain: string): Promise<NetsapiensUser[]> {
@@ -691,4 +740,152 @@ export async function createDevice(domain: string, user: string, input: CreateDe
   })
 
   return mapDeviceRecord(response)
+}
+
+// Idempotency helpers
+export async function checkUserExists(domain: string, user: string): Promise<boolean> {
+  try {
+    const found = await getUser(domain, user)
+    return Boolean(found)
+  } catch (e) {
+    // Propagate NetsapiensError 429/5xx for retry logic upstream
+    throw e
+  }
+}
+
+export async function checkDeviceExists(domain: string, user: string, device: string): Promise<boolean> {
+  try {
+    const devices = await listDevices(domain, user)
+    return devices.some((d) => d.device.toLowerCase() === device.toLowerCase())
+  } catch (e) {
+    throw e
+  }
+}
+
+// Batch operations
+export async function batchCreateUsers(
+  domain: string,
+  users: CreateUserRequest[],
+): Promise<BatchResult<NetsapiensUser, CreateUserRequest>> {
+  if (users.length === 0) {
+    return { successes: [], skipped: [], errors: [] }
+  }
+  if (users.length > MAX_BATCH_SIZE) {
+    throw new Error(`batchCreateUsers limit exceeded: ${users.length} > ${MAX_BATCH_SIZE}`)
+  }
+
+  const result: BatchResult<NetsapiensUser, CreateUserRequest> = { successes: [], skipped: [], errors: [] }
+
+  for (let i = 0; i < users.length; i += 1) {
+    const input = users[i]
+    try {
+      const exists = await checkUserExists(domain, input.user)
+      if (exists) {
+        result.skipped.push({ index: i, input, reason: 'exists' })
+        continue
+      }
+
+      const created = await createUser(domain, input)
+      result.successes.push({ index: i, result: created })
+    } catch (e) {
+      const err = e as unknown
+      const status = err instanceof NetsapiensError ? err.status : undefined
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      result.errors.push({ index: i, input, message, status })
+      // continue processing remaining items (partial failure handling)
+    }
+  }
+
+  // Mask secrets in logs if present (login-username is not secret; none to mask here)
+  log('Batch create users complete', {
+    domain,
+    total: users.length,
+    successes: result.successes.length,
+    skipped: result.skipped.length,
+    errors: result.errors.length,
+  })
+
+  return result
+}
+
+export async function batchCreateDevices(
+  domain: string,
+  user: string,
+  devices: CreateDeviceRequest[],
+): Promise<BatchResult<NetsapiensDevice, CreateDeviceRequest>> {
+  if (devices.length === 0) {
+    return { successes: [], skipped: [], errors: [] }
+  }
+  if (devices.length > MAX_BATCH_SIZE) {
+    throw new Error(`batchCreateDevices limit exceeded: ${devices.length} > ${MAX_BATCH_SIZE}`)
+  }
+
+  const result: BatchResult<NetsapiensDevice, CreateDeviceRequest> = { successes: [], skipped: [], errors: [] }
+  const createdDevices: { index: number; device: NetsapiensDevice }[] = []
+
+  for (let i = 0; i < devices.length; i += 1) {
+    const input = devices[i]
+    try {
+      const exists = await checkDeviceExists(domain, user, input.device)
+      if (exists) {
+        result.skipped.push({ index: i, input, reason: 'exists' })
+        continue
+      }
+
+      const created = await createDevice(domain, user, input)
+      createdDevices.push({ index: i, device: created })
+      result.successes.push({ index: i, result: created })
+    } catch (e) {
+      const err = e as unknown
+      const status = err instanceof NetsapiensError ? err.status : undefined
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      result.errors.push({ index: i, input, message, status })
+
+      // Rollback previously created devices for this batch
+      if (createdDevices.length > 0) {
+        warn('Rolling back created devices after batch error', {
+          domain,
+          user,
+          createdCount: createdDevices.length,
+        })
+
+        for (const c of createdDevices) {
+          try {
+            const encodedDomain = encodeURIComponent(domain)
+            const encodedUser = encodeURIComponent(user)
+            const encodedDevice = encodeURIComponent(c.device.device)
+            await netsapiensRequest(
+              `domains/${encodedDomain}/users/${encodedUser}/devices/${encodedDevice}`,
+              { method: 'DELETE' },
+              unknownResponseSchema,
+            )
+            log('Rolled back NetSapiens device', { domain, user, device: c.device.device })
+          } catch (rollbackErr) {
+            const rbStatus = rollbackErr instanceof NetsapiensError ? rollbackErr.status : undefined
+            logError('Failed to rollback NetSapiens device', {
+              domain,
+              user,
+              device: c.device.device,
+              status: rbStatus,
+              message: (rollbackErr as Error).message,
+            })
+          }
+        }
+      }
+
+      // After rollback attempt, break out to avoid partial persistent state in same batch
+      break
+    }
+  }
+
+  log('Batch create devices complete', {
+    domain,
+    user,
+    total: devices.length,
+    successes: result.successes.length,
+    skipped: result.skipped.length,
+    errors: result.errors.length,
+  })
+
+  return result
 }

@@ -1,0 +1,353 @@
+Adtran_NS_Updater — MASTER_PROMPT_v4 (Authoritative Build Spec)
+
+Read this first
+- Code workspace: All code goes in Adtran_NS_Updater (already created at repo root).
+- Mandatory references:
+  - NetsapiensAPIReferenceAndExamples/
+  - Docs-MetaswitchShadowDB/
+  - Portal_ref_screenshots/
+  - UI_STYLE_GUIDE_AND_ARCHITECTURE.md
+- Hosting context:
+  - Internal Docker on Linux dev server at https://adtran-assistant.grid4.com
+  - Both local dev PC and the server can reach ShadowDB 10.100.30.60:5432
+  - Ensure the container can reach internal DB over firewall
+- Lab E2E device:
+  - Adtran IP: 8.2.147.30
+  - Username: rancid
+  - Password: platinum-gold
+  - Enable: g4cr00ks
+
+Mission and business value
+Automate migration/update of Adtran devices from Metaswitch to Netsapiens, prioritizing automated credential gathering:
+- Fetch Adtran IPs from ShadowDB
+- Retrieve and parse running-config
+- Discover or create Netsapiens entities
+- Re-query Netsapiens for connection and device passwords
+- Generate precise “after” config, preserving fax options
+- Provide diff + controlled Apply over SSH with verification
+- Enforce OS version requirements
+- Log everything with secrets redacted
+
+Out-of-scope: CI/CD, load tests, advanced RBAC, non-critical ops.
+
+Golden workflow: Query → Provision if needed → Re-query for secrets
+0) OS version check (new)
+- After connecting to Adtran over SSH, run show version and parse the AOS version.
+- Gate automatic configuration updates based on OS version:
+  - If major < 13: Block “Apply Now” (hard stop). Show a red error card and advise firmware update by the team.
+  - If major == 13 but version != RECOMMENDED_OS_VERSION (R13.12.0.E): Show a yellow warning. “Apply Now” remains enabled unless STRICT_OS_GATING=true.
+  - If exactly R13.12.0.E: Proceed normally.
+- Optionally cross-check the user agent from Netsapiens connection.registration.user_agent (contains ADTRAN_Total_Access_908_2nd_Gen/R13.12.0.E) but do not rely on it as authoritative.
+
+1) Discover device and ground truth
+- Input: customer key/binding from ShadowDB (fuzzy search)
+- Query ShadowDB for Adtran IP
+- SSH to Adtran, run:
+  - enable
+  - terminal length 0
+  - show version        ← version check and gating
+  - show running-config | begin T01
+  - show sip trunk-registration
+- Treat running-config as source of truth
+
+2) Parse and classify
+- Parse trunks, grouped-trunks, and voice users
+- Classify FXS users: Normal vs FAX (modem-passthrough, t38, codec-list fax)
+- Map connect fxs 0/N → extension 100N; name-first-name="FXS"; name-last-name="{N}"
+
+3) Netsapiens discovery and provisioning
+- Domain selection (fuzzy); assume domain exists by default
+- Optional: allow domain creation (ALLOW_DOMAIN_CREATE=true)
+- Connections:
+  - List domain connections; select or create
+  - Re-query selected connection for connection-sip-registration-password
+- Users/devices:
+  - Ensure each 100N user exists (create sync:'yes' if missing)
+  - Ensure at least one device per user (create sync:'yes' if missing)
+  - Re-query or rely on sync create response to get device-sip-registration-password
+
+4) Generate target “after” Adtran config
+- Update trunks to Netsapiens servers, grammars, domains
+- T01 uses connection credentials
+- T02 points to the Netsapiens FXS domain
+- Each FXS voice user updated to sip-identity 100N T02 with device password
+- Preserve fax-specific parameters
+
+5) Present and apply
+- Show before/after and diff; mask secrets by default
+- Apply Now (SSH) or Download Config
+- After apply:
+  - sip trunk-registration force-register
+  - show sip trunk-registration
+- Respect OS gating: if blocked, disable Apply Now with tooltip/explainer
+
+6) Logging, masking, and artifacts
+- pino logs, secrets redacted (last 4 chars only)
+- Export summaries and generated configs
+- Optional “Recent Migrations” history
+
+Netsapiens v2 APIs and examples (must follow)
+- Base: https://{server}/ns-api/v2; Authorization: Bearer {NS_API_KEY}
+
+Connections
+- GET /domains/{domain}/connections
+- GET /domains/{domain}/connections/{connection-orig-match-pattern}
+- POST /connections
+
+Users
+- GET /domains/{domain}/users
+- POST /domains/{domain}/users  (supports synchronous: 'yes')
+
+Devices
+- GET /domains/{domain}/users/{user}/devices
+- POST /domains/{domain}/users/{user}/devices  (supports synchronous: 'yes')
+
+Use the exact example payloads/fields from:
+- NetsapiensAPIReferenceAndExamples/example-get-all-connections-for-a-domain.txt
+- NetsapiensAPIReferenceAndExamples/example-get-specific-connection-for-a-domain.txt
+- NetsapiensAPIReferenceAndExamples/example-create-a-connection-pri-trunk.txt
+- NetsapiensAPIReferenceAndExamples/example-get-users-in-domain.txt
+- NetsapiensAPIReferenceAndExamples/example-create-fxs-user-in-domain.txt
+- NetsapiensAPIReferenceAndExamples/example-get-devices-for-user.txt
+- NetsapiensAPIReferenceAndExamples/example-create-logical-device-for-user.txt
+
+Key behaviors
+- Synchronous create for users/devices returns full entity including device-sip-registration-password
+- Connection responses include connection-sip-registration-username/password
+
+ShadowDB (PostgreSQL)
+- .env-only credentials:
+  - DB_HOST=10.100.30.60
+  - DB_PORT=5432
+  - DB_NAME=shadow_config_db
+  - DB_USER=shadowconfigread
+  - DB_PASSWORD=
+- Likely table: meta_configuredsipbinding
+- Example (confirm columns in Docs-MetaswitchShadowDB):
+
+  ```
+  SELECT baseinformation_contactipaddress AS adtran_ip
+  FROM meta_configuredsipbinding
+  WHERE baseinformation_name ILIKE $1
+  LIMIT 1;
+  ```
+
+Adtran device operations
+
+SSH commands
+- Retrieval and version:
+
+  ```
+  enable
+  terminal length 0
+  show version
+  show running-config | begin T01
+  show sip trunk-registration
+  ```
+
+- Apply and persist:
+
+  ```
+  enable
+  configure terminal
+  ... apply minimal deltas ...
+  end
+  write memory
+  sip trunk-registration force-register
+  show sip trunk-registration
+  ```
+
+OS version parsing and gating (new)
+- Source: show version output, e.g.:
+
+  - AOS version R13.12.0.E (line typically includes “AOS version Rxx.xx.x.X”)
+  - Also collect model (TA908 2nd Gen) if available.
+
+- Parser:
+  - Extract semantic version “R<major>.<minor>.<patch>.<letter>”, e.g., R13.12.0.E
+  - Robust regex fallback to capture “R\d+(?:\.\d+){1,3}(?:\.[A-Z])?” case-insensitively
+  - Normalize to { major: number; minor: number; patch: number; label: string }
+
+- Gating logic:
+  - If major < MINIMUM_OS_MAJOR (13): block Apply Now; only allow “Download Config” and “Dry Run”; present red error with remediation.
+  - If version != RECOMMENDED_OS_VERSION (R13.12.0.E) but major ≥ 13:
+    - Show prominent yellow warning: “Recommended OS is R13.12.0.E”
+    - If STRICT_OS_GATING=true: also disable Apply Now (treat as hard gate)
+  - If show version fails or is unparseable: treat as unknown; block Apply Now and prompt to verify device.
+
+- Optional cross-check:
+  - If available, compare with Netsapiens connection.registration.user_agent (e.g., ADTRAN_Total_Access_908_2nd_Gen/R13.12.0.E). Do not use as the sole source.
+
+Example parser snippet
+
+```ts
+export interface AosVersion {
+  raw: string;
+  major: number;
+  minor: number;
+  patch: number;
+  label?: string; // e.g., 'E'
+}
+
+export function parseAosVersion(output: string): AosVersion | null {
+  // Look for R13.12.0.E or variants
+  const m = output.match(/R(\d+)\.(\d+)\.(\d+)(?:\.([A-Z]))?/i);
+  if (!m) return null;
+  return {
+    raw: m[0].toUpperCase(),
+    major: Number(m[1]),
+    minor: Number(m[2]),
+    patch: Number(m[3]),
+    label: m[4]?.toUpperCase()
+  };
+}
+
+export function isVersionAtLeast(v: AosVersion, minMajor: number): boolean {
+  return v.major >= minMajor;
+}
+```
+
+Server/API modules and routes
+- Next.js App Router endpoints:
+
+  - /api/shadowdb/lookup  POST  { binding } → { ip }
+  - /api/adtran/fetch-config  POST { ip } → { raw, parsed, device: { model?, aosVersion } }
+    - Internally runs show version and parses it; returns aosVersion to front-end for gating
+  - /api/netsapiens/connections  GET ?domain=... → [connections]
+  - /api/netsapiens/connection  GET { domain, pattern } → [connection]
+  - /api/netsapiens/connection  POST payload → created connection
+  - /api/netsapiens/users  GET ?domain=... → [users]
+  - /api/netsapiens/user     POST { domain, userPayload, synchronous:'yes' } → user
+  - /api/netsapiens/devices  GET { domain, user } → [devices]
+  - /api/netsapiens/device   POST { domain, user, devicePayload, synchronous:'yes' } → device
+  - /api/plan                POST { parsed, selections, nsState } → { afterText, diff, deltas }
+  - /api/adtran/apply-config POST { ip, deltas } → { status, verification }
+  - /api/health              GET → 200 for Docker healthcheck
+
+Parsing spec and types
+- Extract:
+  - Trunks: id, type, description, sip-server, registrar, domain, grammar lines, register/auth, codec-list, match dnis
+  - Grouped-trunks: name, trunks, accept lines
+  - Users: DN, connect fxs 0/N, sip-identity id Tyy register auth, codec-list, fax flags
+- Fax flags: modem-passthrough, t38, no nls, no echo-cancellation, rtp delay-mode fixed, rtp dtmf-relay inband, codec-list fax
+- FXS mapping: connect fxs 0/N → extension 100N; Name “FXS N”
+- Device info:
+
+```ts
+export interface DeviceInfo {
+  model?: string;
+  aosVersion?: AosVersion | null;
+}
+export interface ParsedAdtranConfig {
+  trunks: Trunk[];
+  groupedTrunks: GroupedTrunk[];
+  fxsUsers: FXSUser[];
+  raw: string;
+  device?: DeviceInfo;
+}
+```
+
+Rendering “After” config
+- Trunk T01 (Netsapiens PRI/SIP)
+- Trunk T02 (Netsapiens FXS)
+- Grouped-trunks: FXS-OUTBOUND → T02; PRI-OUTBOUND → T01
+- FXS voice users updated with sip-identity 100N T02 password <device-sip-registration-password>
+- Fax users preserve fax flags
+
+UI/UX requirements (with OS-gating)
+- Follow UI_STYLE_GUIDE_AND_ARCHITECTURE.md
+- Steps:
+  - Step 1: Customer Identification (ShadowDB)
+  - Step 2: Automated Discovery
+    - Show OS info (Device OS: R13.12.0.E). Indicators:
+      - Green: R13.12.0.E
+      - Yellow: R13.x but not 13.12.0.E (warning)
+      - Red: Below R13 (hard block)
+  - Step 3: Netsapiens Domain/Connection
+  - Step 4: FXS Sync
+  - Step 5: Review and Apply
+    - Apply Now disabled if blocked by OS gating; tooltip: “Device OS below R13. Update before applying changes.”
+  - Optional: Recent Migrations
+
+Environment and secrets (.env)
+- Required:
+
+  ```
+  APP_BASE_URL=https://adtran-assistant.grid4.com
+  NS_API_BASE_URL=https://portal.grid4voice.ucaas.tech
+  NS_API_KEY=
+  DB_HOST=10.100.30.60
+  DB_PORT=5432
+  DB_NAME=shadow_config_db
+  DB_USER=shadowconfigread
+  DB_PASSWORD=
+  NS_CORE_SERVER=core1-ord.grid4voice.ucaas.tech
+  ADTRAN_SSH_USER=rancid
+  ADTRAN_SSH_PASS=
+  ADTRAN_ENABLE_PASS=
+  ALLOW_DOMAIN_CREATE=false
+  MINIMUM_OS_MAJOR=13
+  RECOMMENDED_OS_VERSION=R13.12.0.E
+  STRICT_OS_GATING=false
+  ```
+
+Sequence diagrams (with version check)
+
+Discovery and planning
+
+```mermaid
+sequenceDiagram
+  participant UI
+  participant API
+  participant ShadowDB
+  participant Adtran
+  participant NS as Netsapiens
+
+  UI->>API: POST /api/shadowdb/lookup {binding}
+  API->>ShadowDB: SELECT ... contactipaddress ...
+  ShadowDB-->>API: { ip }
+  API-->>UI: { ip }
+
+  UI->>API: POST /api/adtran/fetch-config {ip}
+  API->>Adtran: SSH: enable; terminal length 0; show version; show running-config; show sip trunk-registration
+  Adtran-->>API: { version output + config }
+  API-->>UI: { raw, parsed, device: { aosVersion } }
+
+  Note over UI,API: If aosVersion.major < 13: show red block; disable Apply Now
+
+  UI->>API: GET /api/netsapiens/connections?domain=...
+  API->>NS: GET /domains/{domain}/connections
+  NS-->>API: [connections]
+  API-->>UI: [connections]
+```
+
+Apply and verify (subject to OS gate)
+
+```mermaid
+sequenceDiagram
+  participant UI
+  participant API
+  participant Adtran
+
+  Note over UI: Apply Now enabled only if OS gate passes
+
+  UI->>API: POST /api/adtran/apply-config {ip, deltas}
+  API->>Adtran: SSH: enable; conf t; apply deltas; end; write memory
+  API->>Adtran: sip trunk-registration force-register; show sip trunk-registration
+  Adtran-->>API: verification output
+  API-->>UI: status + verification summary
+```
+
+Error handling, retries, idempotency
+- Netsapiens: re-query on “already exists”; backoff for transient; respect 429 Retry-After
+- SSH: retries with backoff; surface attempts in UI
+- Idempotency: deterministic user/device names with re-queries
+- Dry run mode available
+
+Acceptance criteria (updated)
+- Device OS gating:
+  - If show version indicates major < 13 or is unparseable/unknown: “Apply Now” must be disabled and a clear message shown instructing a firmware update before any changes.
+  - If version is R13.x but not R13.12.0.E: a warning must be shown; “Apply Now” allowed unless STRICT_OS_GATING=true.
+  - If version is R13.12.0.E: proceed without warnings.
+- All prior criteria still hold:
+  - Entities discovered/created, secrets retrieved, after-config correct, fax preserved, diff accurate, apply+verify succeeds, download works.

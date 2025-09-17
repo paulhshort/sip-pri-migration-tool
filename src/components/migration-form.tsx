@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Toast } from '@/components/ui/toast'
 import { SipBindingCombobox } from '@/components/sip-binding-combobox'
 import { ProgressIndicator } from '@/components/progress-indicator'
-import { Download, Loader2, Database, FileText, CheckCircle2, ArrowRight, RefreshCw, Save, Trash, Keyboard } from 'lucide-react'
+import { Download, Loader2, Database, FileText, CheckCircle2, ArrowRight, RefreshCw, Save, Trash, Keyboard, AlertTriangle, FileCode } from 'lucide-react'
 
 const formSchema = z.object({
   migrationType: z.enum(['sip-trunk', 'pri'], {
@@ -39,6 +39,7 @@ type GenerateResponse = {
     metaswitch: string
     netsapiens: string
   }
+  numbers?: string[]
 }
 
 type BindingInsight =
@@ -93,6 +94,19 @@ export function MigrationForm() {
   const [bindingInsight, setBindingInsight] = useState<BindingInsight>({ status: 'idle' })
   const [domainInsight, setDomainInsight] = useState<DomainInsight>({ status: 'idle' })
   const [phoneNumberInsight, setPhoneNumberInsight] = useState<PhoneNumberInsight>({ status: 'idle', numbers: [] })
+
+  // PRI automation state (feature-flagged)
+  const [priPlanLoading, setPriPlanLoading] = useState(false)
+  const [priPlanResult, setPriPlanResult] = useState<{
+    diff?: string
+    deltas?: string[]
+    afterText?: string
+    osVersion?: string
+    osVersionOk?: boolean
+  } | null>(null)
+  const [connectionInsight, setConnectionInsight] = useState<{ exists: boolean } | null>(null)
+
+  const isAutomationEnabled = (process.env.NEXT_PUBLIC_ENABLE_AUTOMATION === 'true') || (typeof window !== 'undefined' && localStorage.getItem('forceAutomationFlag') === 'true')
 
   const {
     register,
@@ -313,6 +327,51 @@ export function MigrationForm() {
     }
   }, [domainInsight, domainVal])
 
+  // Check NetSapiens connection existence for SIP Trunk (automation enabled only)
+  useEffect(() => {
+    if (!isAutomationEnabled || migrationTypeVal !== 'sip-trunk') {
+      setConnectionInsight(null)
+      return
+    }
+
+    const domain = (domainVal || '').trim()
+    if (!domain || domainInsight.status !== 'found') {
+      setConnectionInsight(null)
+      return
+    }
+
+    let isCancelled = false
+    const controller = new AbortController()
+
+    const checkConnection = async () => {
+      try {
+        const response = await fetch(`/api/netsapiens/connections?domain=${encodeURIComponent(domain)}`, {
+          signal: controller.signal,
+        })
+
+        if (isCancelled) return
+
+        if (response.ok) {
+          const data = await response.json()
+          setConnectionInsight({ exists: Array.isArray(data.connections) && data.connections.length > 0 })
+        } else {
+          setConnectionInsight({ exists: false })
+        }
+      } catch {
+        if (!isCancelled) {
+          setConnectionInsight({ exists: false })
+        }
+      }
+    }
+
+    checkConnection()
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+    }
+  }, [isAutomationEnabled, migrationTypeVal, domainVal, domainInsight])
+
   // Load saved form data on component mount
   useEffect(() => {
     const saved = localStorage.getItem('sip-pri-form-data')
@@ -342,7 +401,7 @@ export function MigrationForm() {
           handleSubmit(onSubmit)()
         }
       }
-      
+
       // Ctrl/Cmd + R to reset form
       if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
         event.preventDefault()
@@ -375,15 +434,102 @@ export function MigrationForm() {
     setShowToast({ show: true, message: 'Form cleared', type: 'info' })
   }
 
+  // Handler for PRI Plan button (feature-flagged)
+  const handlePriPlan = async () => {
+    const contactIp = bindingInsight.status === 'found' ? bindingInsight.details.contactIp : undefined
+
+    if (!contactIp || !/^(\d{1,3}\.){3}\d{1,3}$/.test(contactIp)) {
+      setShowToast({ show: true, message: 'Valid IP address required from binding', type: 'error' })
+      return
+    }
+
+    setPriPlanLoading(true)
+    setPriPlanResult(null)
+    setShowToast({ show: true, message: 'Fetching Adtran configuration...', type: 'info' })
+
+    try {
+      // Step 1: Fetch config from Adtran
+      const fetchResponse = await fetch('/api/adtran/fetch-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: contactIp }),
+      })
+
+      if (!fetchResponse.ok) {
+        const errorData = await fetchResponse.json()
+        setShowToast({ show: true, message: errorData.error || 'Failed to fetch Adtran config', type: 'error' })
+        return
+      }
+
+      const fetchData = await fetchResponse.json()
+
+      // Step 2: Generate plan (no apply)
+      const parsedForPlan = {
+        raw: fetchData.raw?.runningConfig ?? '',
+        fxsUsers: fetchData.parsed?.runningConfig?.fxsUsers ?? [],
+        trunks: fetchData.parsed?.runningConfig?.trunks ?? [],
+      }
+
+      const planResponse = await fetch('/api/adtran/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parsed: parsedForPlan,
+          nsState: {},
+        }),
+      })
+
+      if (!planResponse.ok) {
+        const errorData = await planResponse.json()
+        setShowToast({ show: true, message: errorData.error || 'Failed to generate plan', type: 'error' })
+        return
+      }
+
+      const planData = await planResponse.json()
+
+      setPriPlanResult({
+        diff: planData.diff,
+        deltas: Array.isArray(planData.deltas) ? planData.deltas : [],
+        afterText: typeof planData.afterText === 'string' ? planData.afterText : undefined,
+        osVersion: fetchData.device?.aosVersion,
+        osVersionOk: fetchData.device?.gates ? !fetchData.device.gates.blocked : undefined,
+      })
+
+      setShowToast({ show: true, message: 'Configuration plan generated', type: 'success' })
+    } catch (error) {
+      setShowToast({ show: true, message: (error as Error).message, type: 'error' })
+    } finally {
+      setPriPlanLoading(false)
+    }
+  }
+
+  // Helper: download text content as a file (used for updated Adtran config)
+  const downloadTextFile = (text: string, filename: string) => {
+    try {
+      const blob = new Blob([text], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setShowToast({ show: true, message: 'Failed to start download', type: 'error' })
+    }
+  }
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
     setShowProgress(true)
     setError(null)
     setResult(null)
-    setShowToast({ show: true, message: 'Starting CSV generation...', type: 'info' })
+    setShowToast({ show: true, message: (isAutomationEnabled ? 'Starting automation...' : 'Starting CSV generation...'), type: 'info' })
 
     try {
-      const response = await fetch('/api/generate', {
+      const endpoint = isAutomationEnabled ? '/api/automation/run' : '/api/generate'
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -392,6 +538,7 @@ export function MigrationForm() {
       })
 
       if (!response.ok) {
+
         const errorData = await response.json()
         const errorMsg = errorData.error || 'Failed to generate CSVs'
         setError(errorMsg)
@@ -401,7 +548,7 @@ export function MigrationForm() {
 
       const result: GenerateResponse = await response.json()
       setResult(result)
-      
+
       // Add to generation history
       const historyRecord = {
         binding: data.binding,
@@ -417,17 +564,17 @@ export function MigrationForm() {
       if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).addToGenerationHistory) {
         ((window as unknown as Record<string, unknown>).addToGenerationHistory as (record: typeof historyRecord) => void)(historyRecord)
       }
-      
-      setShowToast({ 
-        show: true, 
-        message: `Successfully generated ${result.summary.totalNumbers} phone numbers!`, 
-        type: 'success' 
+
+      setShowToast({
+        show: true,
+        message: `Successfully generated ${result.summary.totalNumbers} phone numbers!`,
+        type: 'success'
       })
-      
+
       // Clear saved form data after successful generation
       localStorage.removeItem('sip-pri-form-data')
       setLastSaved(null)
-      
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMsg)
@@ -444,24 +591,25 @@ export function MigrationForm() {
     reset()
     setResult(null)
     setError(null)
+    setPriPlanResult(null)
     setShowToast({ show: false, message: '', type: 'info' })
   }
 
   return (
     <>
       {showToast.show && (
-        <Toast 
-          message={showToast.message} 
+        <Toast
+          message={showToast.message}
           type={showToast.type}
           onClose={() => setShowToast({ show: false, message: '', type: 'info' })}
         />
       )}
-      
+
       <div className="space-y-8">
-        
+
         {/* Progress Indicator */}
-        <ProgressIndicator 
-          isVisible={showProgress} 
+        <ProgressIndicator
+          isVisible={showProgress}
           onComplete={() => setShowProgress(false)}
         />
 
@@ -543,9 +691,9 @@ export function MigrationForm() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    size="lg" 
-                    className="w-full group-hover:shadow-lg transition-shadow" 
+                  <Button
+                    size="lg"
+                    className="w-full group-hover:shadow-lg transition-shadow"
                     onClick={() => window.open(result.files.metaswitch, '_blank')}
                   >
                     <Download className="w-5 h-5 mr-2" />
@@ -565,9 +713,9 @@ export function MigrationForm() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    size="lg" 
-                    className="w-full group-hover:shadow-lg transition-shadow" 
+                  <Button
+                    size="lg"
+                    className="w-full group-hover:shadow-lg transition-shadow"
                     onClick={() => window.open(result.files.netsapiens, '_blank')}
                   >
                     <Download className="w-5 h-5 mr-2" />
@@ -739,6 +887,18 @@ export function MigrationForm() {
                     {domainInsight.status === 'error' && (
                       <p className="text-xs text-red-400">Domain lookup failed: {domainInsight.message}</p>
                     )}
+                    {isAutomationEnabled && migrationTypeVal === 'sip-trunk' && domainInsight.status === 'not-found' && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
+                        <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                        <span>Domain needs to be created before automation can proceed</span>
+                      </div>
+                    )}
+                    {isAutomationEnabled && migrationTypeVal === 'sip-trunk' && connectionInsight && !connectionInsight.exists && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
+                        <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                        <span>Connection does not exist and needs to be created</span>
+                      </div>
+                    )}
                     {errors.domain && (
                       <p className="text-sm text-red-400 flex items-center gap-1">
                         <span className="w-1 h-1 bg-red-400 rounded-full"></span>
@@ -862,21 +1022,116 @@ export function MigrationForm() {
                   </Card>
                 )}
 
+                {/* PRI Plan Results (feature-flagged) */}
+                {isAutomationEnabled && migrationTypeVal === 'pri' && priPlanResult && (
+                  <Card className="border-[#52B4FA]/20 bg-gray-800/60">
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <FileCode className="h-4 w-4" />
+                        Configuration Plan
+                        {priPlanResult.osVersionOk === false && (
+                          <span className="text-xs text-yellow-400">(OS Version Warning)</span>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {priPlanResult.diff && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Configuration Diff (Masked)</Label>
+                          <pre className="text-xs font-mono bg-gray-900 p-3 rounded overflow-x-auto max-h-48 overflow-y-auto border border-gray-700">
+                            {priPlanResult.diff}
+                          </pre>
+                        </div>
+                      )}
+                      {priPlanResult.deltas && priPlanResult.deltas.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Changes to Apply ({priPlanResult.deltas.length})</Label>
+                          <ul className="text-xs space-y-1">
+                            {priPlanResult.deltas.map((delta, idx) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="text-gray-500">{idx + 1}.</span>
+                                <span className="font-mono text-gray-300">{delta}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full mb-2"
+                          onClick={() => {
+                            const text = priPlanResult.afterText || ''
+                            if (!text) {
+                              setShowToast({ show: true, message: 'No updated config available yet', type: 'error' })
+                              return
+                            }
+                            const base = (bindingVal || 'binding').toLowerCase().replace(/[^a-z0-9]+/g, '_')
+                            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+                            downloadTextFile(text, `adtran_config_${base}_${ts}.txt`)
+                          }}
+                          disabled={!priPlanResult.afterText}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Updated Config
+                        </Button>
+                      </div>
+
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled
+                          className="w-full opacity-50 cursor-not-allowed"
+                          title="Lab-only; gated"
+                        >
+                          Apply Changes (Lab-only; gated)
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <div className="pt-4">
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting} 
+                  {/* Show Plan button for PRI when automation enabled */}
+                  {isAutomationEnabled && migrationTypeVal === 'pri' && !priPlanResult && (
+                    <Button
+                      type="button"
+                      onClick={handlePriPlan}
+                      disabled={priPlanLoading || !bindingInsight.status || bindingInsight.status !== 'found' || !bindingInsight.details.contactIp}
+                      size="lg"
+                      className="w-full mb-3"
+                      variant="outline"
+                    >
+                      {priPlanLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Generating Plan...
+                        </>
+                      ) : (
+                        <>
+                          <FileCode className="w-4 h-4 mr-2" />
+                          Plan Configuration Changes
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
                     size="lg"
                     className="w-full"
                   >
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Generating CSVs...
+                        {isAutomationEnabled ? 'Running automation...' : 'Generating CSVs...'}
                       </>
                     ) : (
                       <>
-                        Generate CSVs
+                        {isAutomationEnabled ? 'Run Automation' : 'Generate CSVs'}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </>
                     )}

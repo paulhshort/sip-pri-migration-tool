@@ -1,0 +1,69 @@
+Request example - Creating a NEW domain named newexampledomain.com :
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.createDomain({
+  synchronous: 'yes',
+  domain: 'newexampledomain.com',
+  reseller: 'grid4voice_reseller',
+  description: 'This is an example of adding a brand new domain into Netsapiens named newexampledomain.com',
+  'domain-type': 'Standard',
+  'dial-policy': 'US and Canada',
+  'caller-id-name': '{Caller ID Name}',
+  'time-zone': 'US/Eastern',
+  'language-token': 'en_US',
+  'is-domain-locked': 'no',
+  'is-stir-enabled': 'yes',
+  'is-ivr-forward-change-blocked': 'yes'
+})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+```
+
+
+Response example (with synchronous set to yes):
+```
+{
+  "domain": "newexampledomain.com",
+  "description": "This is an example of adding a brand new domain into Netsapiens named newexampledomain.com",
+  "vmailType": "",
+  "maxCallMinute": 0,
+  "policies": "active",
+  "iotum_domain": null,
+  "iotum_company_id": null,
+  "reseller": "grid4voice_reseller",
+  "music-on-hold-enabled": "yes",
+  "music-on-ring-enabled": "no",
+  "music-on-hold-randomized-enabled": "no",
+  "domain-type": "no",
+  "limits-max-active-calls-total": 0,
+  "limits-max-active-calls-offnet": 0,
+  "limits-max-subscriber-resources-total": 0,
+  "limits-max-call-queues": 0,
+  "limits-max-auto-attendants": 0,
+  "limits-max-conferences": 0,
+  "limits-max-departments": 0,
+  "limits-max-users": 0,
+  "time-zone": "US/Eastern",
+  "dial-plan": "newexampledomain.com",
+  "dial-policy": "US and Canada",
+  "email-send-from-address": "",
+  "email-send-smtp-hostname": "",
+  "email-send-smtp-port": "",
+  "email-send-smtp-username": "",
+  "email-send-smtp-password": "",
+  "active-calls-total-current": 0,
+  "active-calls-against-license-count": 0,
+  "active-calls-offnet-current": 0,
+  "count-users-configured": 1,
+  "limits-max-sites": 0,
+  "limits-max-fax-accounts": -1,
+  "emergency-address-id": "",
+  "single-sign-on-enabled": "no",
+  "iotum-default-plan": null,
+  "iotum-default-add-ons": null,
+  "iotum-video-status": null
+}
+```

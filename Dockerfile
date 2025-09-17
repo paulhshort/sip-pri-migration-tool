@@ -42,7 +42,13 @@ RUN mkdir -p data/output && chown nextjs:nodejs data/output
 
 # Set proper permissions
 RUN chown -R nextjs:nodejs /app
-USER nextjs
+
+# Install su-exec to drop privileges at runtime after fixing volume permissions
+RUN apk add --no-cache su-exec
+
+# Copy entrypoint to handle volume permission fixups then drop to non-root user
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 3000
@@ -56,5 +62,7 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js
 
-# Start the application
+# Use entrypoint to adjust runtime permissions and drop privileges
+ENTRYPOINT ["/entrypoint.sh"]
+# Start the application as nextjs user (via entrypoint)
 CMD ["node", "server.js"]

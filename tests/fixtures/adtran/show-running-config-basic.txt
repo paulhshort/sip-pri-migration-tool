@@ -1,0 +1,10 @@
+!
+voice user 1001
+  connect fxs 0/1
+!
+voice user 1002
+  connect fxs 0/2
+!
+sip trunk demo-trunk
+  description Demo trunk for lab
+!

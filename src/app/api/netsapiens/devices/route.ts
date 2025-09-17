@@ -7,6 +7,7 @@ import {
   listDevices,
 } from '@/lib/netsapiens'
 import { log, error as logError } from '@/lib/logger'
+import { maskSecret } from '@/lib/secrets'
 
 const getQuerySchema = z.object({
   domain: z.string().trim().min(1, 'domain is required'),
@@ -17,13 +18,6 @@ const createRequestSchema = createDeviceRequestSchema.extend({
   domain: z.string().trim().min(1, 'domain is required'),
   user: z.string().trim().min(1, 'user is required'),
 })
-
-const maskSecret = (value?: string) => {
-  if (!value) {
-    return undefined
-  }
-  return `****${value.slice(-4)}`
-}
 
 const serializeDevice = ({ raw, sipRegistrationPassword, ...device }: NetsapiensDevice) => ({
   ...device,

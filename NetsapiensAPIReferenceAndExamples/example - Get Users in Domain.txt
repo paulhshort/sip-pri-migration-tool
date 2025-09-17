@@ -1,0 +1,81 @@
+REQUEST (NODE JS)
+
+
+
+```
+import netsapiensApi from '@api/netsapiens-api';
+
+netsapiensApi.auth('nss_aXJTse8mo02cfiihvKjFfp4ohRg1BuiG34CKMY4uBGXcIiFTa362a929');
+netsapiensApi.getUsers({limit: '1000', domain: 'exampledomain.com'})
+  .then(({ data }) => console.log(data))
+  .catch(err => console.error(err));
+
+```
+
+
+RESPONSE:
+
+```
+[
+  {
+    "domain": "exampledomain.com",
+    "user": "1004",
+    "name-first-name": "FXS",
+    "name-last-name": "4",
+    "login-username": "1004@exampledomain.com",
+    "user-scope": "No Portal",
+    "department": "",
+    "site": "",
+    "user-presence-status": "inactive",
+    "time-zone": "US/Eastern",
+    "area-code": "",
+    "caller-id-number": 2485556969,
+    "caller-id-name": "Example Company",
+    "dial-plan": "exampledomain.com",
+    "dial-policy": "US & Canada",
+    "account-status": "pwd reset",
+    "active-calls-total-current": 0,
+    "call-recordings-hide-from-others-enabled": "no",
+    "call-screening-enabled": "no",
+    "caller-id-number-emergency": 2485556969,
+    "created-datetime": "2025-09-16T18:22:36+00:00",
+    "directory-annouce-in-dial-by-name-enabled": "no",
+    "directory-name-number-dtmf-mapping": 397,
+    "directory-name-visible-in-list-enabled": "no",
+    "directory-override-order-duplicate-dtmf-mapping": 1,
+    "email": "FXS4@exampledomain.com",
+    "email-send-alert-data-storage-limit-reached-enabled": "no",
+    "email-send-alert-new-missed-call-enabled": "no",
+    "email-send-alert-new-voicemail-behavior": "",
+    "email-send-alert-new-voicemail-cc-list-csv": "",
+    "email-send-alert-new-voicemail-enabled": "",
+    "emergency-address-id": "",
+    "iotum-video-host-id": "",
+    "language-token": "en_US",
+    "last-modified-datetime": "2025-09-16T18:22:36+00:00",
+    "limits-max-active-calls-total": 0,
+    "limits-max-data-storage-kilobytes": 10000,
+    "mfa": [],
+    "music-on-hold-comfort-message-repeat-interval-seconds": 0,
+    "music-on-hold-randomized-enabled": "",
+    "phone-numbers-to-allow-enabled": "no",
+    "phone-numbers-to-reject-enabled": "no",
+    "privacy": "no",
+    "reject-anonymous-calls-enabled": "no",
+    "ring-no-answer-timeout-seconds": 25,
+    "service-code": "",
+    "sso_ids": [],
+    "status-message": "",
+    "voicemail-enabled": "no",
+    "voicemail-greeting-index": "",
+    "voicemail-login-pin": 8170884,
+    "voicemail-playback-announce-caller-id": "",
+    "voicemail-playback-announce-date-time-received": "",
+    "voicemail-playback-sort-newest-to-oldest": "no",
+    "voicemail-receive-broadcast-enabled": "yes",
+    "voicemail-transcription-enabled": "no",
+    "voicemail-user-control-enabled": "no"
+  }
+]
+
+```
