@@ -166,14 +166,27 @@ export async function POST(request: NextRequest) {
         // 5a) Provision users and devices in NetSapiens
         const createdUserPasswords: Record<string, string | undefined> = {}
         for (const fxs of parsed.fxsUsers) {
-          const userId = fxs.user
-          if (!userId) continue
+          const adtranUser = fxs.user
+          if (!adtranUser) continue
+
+          // Map connect fxs 0/N -> NetSapiens user 100N; names: FXS / N
+          let portN: string | undefined
+          if (fxs.port) {
+            const m = fxs.port.match(/\/(\d+)$/)
+            portN = m?.[1]
+          }
+          if (!portN) {
+            warn('PRI: FXS port not found; falling back to last digit(s) of Adtran user', { user: adtranUser, port: fxs.port })
+            const digits = adtranUser.replace(/\D+/g, '')
+            portN = digits.slice(-1) || undefined
+          }
+          const nsUserId = portN ? `100${portN}` : adtranUser
 
           const userPayload: CreateUserRequest = {
-            user: userId,
+            user: nsUserId,
             'name-first-name': 'FXS',
-            'name-last-name': userId,
-            'login-username': `${userId}@${input.domain}`,
+            'name-last-name': portN ?? nsUserId,
+            'login-username': `${nsUserId}@${input.domain}`,
             'dial-plan': input.domain,
             'dial-policy': 'US & Canada',
             'time-zone': 'US/Eastern',
@@ -185,43 +198,54 @@ export async function POST(request: NextRequest) {
             await createUser(input.domain, userPayload)
           } catch (e) {
             // continue if exists or other non-fatal
-            warn('PRI: createUser error (continuing)', { user: userId, message: (e as Error).message })
+            warn('PRI: createUser error (continuing)', { user: nsUserId, message: (e as Error).message })
           }
 
           try {
             const devicePayload: CreateDeviceRequest = {
-              device: `${userId}a`,
+              device: `${nsUserId}a`,
               'auto-answer-enabled': 'no',
               'device-provisioning-sip-transport-protocol': 'udp',
             }
-            const device = await createDevice(input.domain, userId, devicePayload)
+            const device = await createDevice(input.domain, nsUserId, devicePayload)
             if (device.sipRegistrationPassword) {
-              createdUserPasswords[userId] = device.sipRegistrationPassword
+              createdUserPasswords[nsUserId] = device.sipRegistrationPassword
             }
           } catch (e) {
-            warn('PRI: createDevice error (continuing)', { user: userId, message: (e as Error).message })
+            warn('PRI: createDevice error (continuing)', { user: nsUserId, message: (e as Error).message })
           }
         }
 
-        // 5b) Assign numbers to users using to-user (best-effort matching)
+        // 5b) Assign numbers to users using to-user (map DID observed in Adtran to 100N)
         const assignedNumbers = new Set<string>()
         const onlyDigits = (s: string) => s.replace(/\D+/g, '')
         for (const fxs of parsed.fxsUsers) {
-          const userId = fxs.user
-          if (!userId) continue
-          const userDigits = onlyDigits(userId)
-          const match = expanded.find((n) => !assignedNumbers.has(n) && onlyDigits(n).endsWith(userDigits))
+          const adtranUser = fxs.user
+          if (!adtranUser) continue
+
+          // Compute NetSapiens user 100N from port
+          let portN: string | undefined
+          if (fxs.port) {
+            const m = fxs.port.match(/\/(\d+)$/)
+            portN = m?.[1]
+          }
+          const nsUserId = portN ? `100${portN}` : adtranUser
+
+          // Prefer exact DID match to the Adtran voice user DN; fallback to suffix match
+          const adtranDigits = onlyDigits(adtranUser)
+          const exact = expanded.find((n) => !assignedNumbers.has(n) && onlyDigits(n) === adtranDigits)
+          const match = exact ?? expanded.find((n) => !assignedNumbers.has(n) && onlyDigits(n).endsWith(adtranDigits))
           if (!match) {
-            warn('PRI: could not map number to user', { user: userId })
+            warn('PRI: could not map DID to FXS user', { adtranUser, nsUserId, port: fxs.port })
             continue
           }
           const payload: CreatePhoneNumberRequest = {
             enabled: 'yes',
             phonenumber: match,
             'dial-rule-application': 'to-user',
-            'dial-rule-translation-destination-user': userId,
+            'dial-rule-translation-destination-user': nsUserId,
             'dial-rule-translation-destination-host': input.domain,
-            'dial-rule-description': `Auto assign to user ${userId}`,
+            'dial-rule-description': `Auto assign to user ${nsUserId} (from ${adtranUser})`,
           }
           try {
             await createPhoneNumber(input.domain, payload)
@@ -231,13 +255,13 @@ export async function POST(request: NextRequest) {
               await updatePhoneNumber(input.domain, match, {
                 enabled: 'yes',
                 'dial-rule-application': 'to-user',
-                'dial-rule-translation-destination-user': userId,
+                'dial-rule-translation-destination-user': nsUserId,
                 'dial-rule-translation-destination-host': input.domain,
-                'dial-rule-description': `Auto assign to user ${userId}`,
+                'dial-rule-description': `Auto assign to user ${nsUserId} (from ${adtranUser})`,
               })
               assignedNumbers.add(match)
             } catch (err2) {
-              warn('PRI: failed to assign number to user', { number: match, user: userId, message: (err2 as Error).message })
+              warn('PRI: failed to assign number to user', { number: match, nsUserId, adtranUser, message: (err2 as Error).message })
             }
           }
         }
