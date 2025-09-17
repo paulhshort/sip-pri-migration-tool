@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Ensure client bundle gets the flag at build time
+        NEXT_PUBLIC_ENABLE_AUTOMATION: ${NEXT_PUBLIC_ENABLE_AUTOMATION}
     ports:
       - "80:3000"
     env_file:

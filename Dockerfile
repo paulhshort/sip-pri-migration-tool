@@ -17,6 +17,11 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# --- Build-time public flags (for client bundle) ---
+# These are safe to expose and control UI features in the client.
+ARG NEXT_PUBLIC_ENABLE_AUTOMATION=false
+ENV NEXT_PUBLIC_ENABLE_AUTOMATION=$NEXT_PUBLIC_ENABLE_AUTOMATION
+
 # Build the application
 RUN pnpm build
 
