@@ -209,7 +209,16 @@ export async function connectSSH(options: SSHConnectionOptions): Promise<SSHSess
       const session: SSHSession = {
         async run(command: string) {
           log('Adtran SSH executing command', { command })
-          return createExecPromise(client, command, timeoutMs)
+          try {
+            return await createExecPromise(client, command, timeoutMs)
+          } catch (e) {
+            const msg = (e as Error)?.message?.toLowerCase?.() || String(e)
+            if (msg.includes('unable to exec')) {
+              // Fallback for devices that disallow exec; use an interactive shell instead
+              return createShellPromise(client, [command], timeoutMs)
+            }
+            throw e
+          }
         },
         async runPrivileged(command: string) {
           if (!options.enablePassword) {
