@@ -156,8 +156,7 @@ export async function POST(request: NextRequest) {
       // SSH fetch: version and running-config
       const session = await connectSSH({ host: binding.contactIp, username: sshUser, password: sshPass, enablePassword: enablePass })
       try {
-        await session.run('terminal length 0')
-        const runCfg = await session.run('show running-config')
+        const runCfg = await session.runPrivileged('terminal length 0\nshow running-config')
         if (runCfg.code !== 0) {
           throw new Error(`Failed to fetch running-config: ${runCfg.stderr}`)
         }
